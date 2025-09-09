@@ -12,7 +12,11 @@
 
 #include "Game/Game.hpp"
 #include "AI/MinMaxAI.hpp"
+#include "UI/GameRenderer.hpp"
 #include <iostream>
+#include <sstream>
+#include <algorithm>
+#include <cmath>
 
 // Constants
 const float Game::MIN_CELL_SIZE = 20.0f;
@@ -134,6 +138,11 @@ void Game::handleMouseClick(int mouseX, int mouseY) {
     
     if (boardPos.x >= 0 && boardPos.x < BOARD_SIZE && 
         boardPos.y >= 0 && boardPos.y < BOARD_SIZE) {
+        
+        // Check if the move is valid
+        if (!board.isValidMove(boardPos.x, boardPos.y)) {
+            return;
+        }
         
         // Set the pending move for human player
         HumanPlayer* humanPlayer = dynamic_cast<HumanPlayer*>(currentPlayer);
@@ -524,9 +533,21 @@ void Game::renderStatusMessage() {
 }
 
 Position Game::getMouseBoardPosition(int mouseX, int mouseY) const {
-    int boardX = (mouseX - boardOffset.x) / cellSize;
-    int boardY = (mouseY - boardOffset.y) / cellSize;
+    // Always delegate to renderer so input uses the same boardOffset/cellSize as rendering    
+    if (renderer) {
+        Position p = renderer->getBoardPosition(mouseX, mouseY);
+        return p;
+    }
     
+    // Fallback (should not happen): approximate using local offsets/sizes
+    float relativeX = static_cast<float>(mouseX) - boardOffset.x;
+    float relativeY = static_cast<float>(mouseY) - boardOffset.y;
+    float normX = relativeX / cellSize;
+    float normY = relativeY / cellSize;
+    int boardX = static_cast<int>(std::round(normX));
+    int boardY = static_cast<int>(std::round(normY));
+    boardX = std::max(0, std::min(BOARD_SIZE - 1, boardX));
+    boardY = std::max(0, std::min(BOARD_SIZE - 1, boardY));
     return Position(boardX, boardY);
 }
 

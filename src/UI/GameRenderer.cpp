@@ -121,8 +121,8 @@ void StoneAnimation::setColors(sf::Color original, sf::Color target) {
 void StoneAnimation::draw(sf::RenderWindow& window, const sf::Vector2f& boardOffset, float cellSize) {
     if (!active) return;
     
-    sf::Vector2f screenPos(boardOffset.x + position.x * cellSize + cellSize/2,
-                          boardOffset.y + position.y * cellSize + cellSize/2);
+    sf::Vector2f screenPos(boardOffset.x + position.x * cellSize,
+                          boardOffset.y + position.y * cellSize);
     
     animatedStone.setRadius(cellSize * 0.4f);
     animatedStone.setOrigin(sf::Vector2f(cellSize * 0.4f, cellSize * 0.4f));
@@ -382,9 +382,15 @@ void GameRenderer::render() {
 }
 
 void GameRenderer::renderBoard() {
-    // Draw board background
-    boardBackground.setSize(sf::Vector2f(BOARD_SIZE * cellSize, BOARD_SIZE * cellSize));
-    boardBackground.setPosition(boardOffset);
+    // Draw board background - adjusted to fit the actual grid lines
+    float boardWidth = (BOARD_SIZE - 1) * cellSize + 2 * currentTheme.panelBorderThickness;
+    float boardHeight = (BOARD_SIZE - 1) * cellSize + 2 * currentTheme.panelBorderThickness;
+    
+    boardBackground.setSize(sf::Vector2f(boardWidth, boardHeight));
+    boardBackground.setPosition(sf::Vector2f(
+        boardOffset.x - currentTheme.panelBorderThickness,
+        boardOffset.y - currentTheme.panelBorderThickness
+    ));
     boardBackground.setFillColor(currentTheme.boardBackground);
     boardBackground.setOutlineColor(currentTheme.boardBorder);
     boardBackground.setOutlineThickness(currentTheme.panelBorderThickness);
@@ -517,23 +523,32 @@ void GameRenderer::highlightMove(const Position& pos, sf::Color color) {
     moveHighlight.setOutlineColor(color);
     moveHighlight.setOutlineThickness(3);
     
-    sf::Vector2f screenPos(boardOffset.x + pos.x * cellSize + cellSize/2,
-                          boardOffset.y + pos.y * cellSize + cellSize/2);
+    sf::Vector2f screenPos(boardOffset.x + pos.x * cellSize,
+                          boardOffset.y + pos.y * cellSize);
     moveHighlight.setPosition(screenPos);
 }
 
 bool GameRenderer::isPositionOnBoard(int mouseX, int mouseY) const {
     sf::FloatRect boardBounds(sf::Vector2f(boardOffset.x, boardOffset.y),
-                             sf::Vector2f(BOARD_SIZE * cellSize, BOARD_SIZE * cellSize));
+                             sf::Vector2f((BOARD_SIZE - 1) * cellSize, (BOARD_SIZE - 1) * cellSize));
     return boardBounds.contains(sf::Vector2f(static_cast<float>(mouseX), static_cast<float>(mouseY)));
 }
 
 Position GameRenderer::getBoardPosition(int mouseX, int mouseY) const {
-    int boardX = static_cast<int>((mouseX - boardOffset.x) / cellSize);
-    int boardY = static_cast<int>((mouseY - boardOffset.y) / cellSize);
-    
-    return Position(std::max(0, std::min(BOARD_SIZE - 1, boardX)),
-                   std::max(0, std::min(BOARD_SIZE - 1, boardY)));
+    // Use rounding to snap to nearest intersection
+    float relX = static_cast<float>(mouseX) - boardOffset.x;
+    float relY = static_cast<float>(mouseY) - boardOffset.y;
+    float normX = relX / cellSize;
+    float normY = relY / cellSize;
+
+    int boardX = static_cast<int>(std::floor(normX + 0.5f));
+    int boardY = static_cast<int>(std::floor(normY + 0.5f));
+
+    // Bounds based on actual grid span (0 .. BOARD_SIZE-1)
+    boardX = std::max(0, std::min(BOARD_SIZE - 1, boardX));
+    boardY = std::max(0, std::min(BOARD_SIZE - 1, boardY));
+
+    return Position(boardX, boardY);
 }
 
 // Private method implementations
@@ -571,23 +586,48 @@ void GameRenderer::setupTexts() {
 
 void GameRenderer::createGridLines() {
     gridLines.clear();
+    hoshiPoints.clear();
     
-    // Horizontal lines
+    // Calculate proper line positions for Go board (lines start and end at edges)
+    float lineLength = (BOARD_SIZE - 1) * cellSize;
+    
+    // Horizontal lines - start from edge to edge
     for (int i = 0; i < BOARD_SIZE; ++i) {
         sf::RectangleShape line;
-        line.setSize(sf::Vector2f(BOARD_SIZE * cellSize, currentTheme.boardLineThickness));
-        line.setPosition(sf::Vector2f(boardOffset.x, boardOffset.y + i * cellSize + cellSize/2));
+        line.setSize(sf::Vector2f(lineLength, currentTheme.boardLineThickness));
+        line.setPosition(sf::Vector2f(boardOffset.x, boardOffset.y + i * cellSize));
         line.setFillColor(currentTheme.gridLines);
         gridLines.push_back(line);
     }
     
-    // Vertical lines
+    // Vertical lines - start from edge to edge
     for (int i = 0; i < BOARD_SIZE; ++i) {
         sf::RectangleShape line;
-        line.setSize(sf::Vector2f(currentTheme.boardLineThickness, BOARD_SIZE * cellSize));
-        line.setPosition(sf::Vector2f(boardOffset.x + i * cellSize + cellSize/2, boardOffset.y));
+        line.setSize(sf::Vector2f(currentTheme.boardLineThickness, lineLength));
+        line.setPosition(sf::Vector2f(boardOffset.x + i * cellSize, boardOffset.y));
         line.setFillColor(currentTheme.gridLines);
         gridLines.push_back(line);
+    }
+    
+    // Add hoshi points (star markers) for 19x19 Go board
+    if (BOARD_SIZE == 19) {
+        // Traditional hoshi positions for 19x19 board
+        int hoshiPositions[9][2] = {
+            {3, 3}, {3, 9}, {3, 15},
+            {9, 3}, {9, 9}, {9, 15},
+            {15, 3}, {15, 9}, {15, 15}
+        };
+        
+        for (int i = 0; i < 9; ++i) {
+            sf::CircleShape hoshi(3.0f);
+            hoshi.setFillColor(currentTheme.gridLines);
+            hoshi.setOrigin(sf::Vector2f(3.0f, 3.0f));
+            hoshi.setPosition(sf::Vector2f(
+                boardOffset.x + hoshiPositions[i][0] * cellSize,
+                boardOffset.y + hoshiPositions[i][1] * cellSize
+            ));
+            hoshiPoints.push_back(hoshi);
+        }
     }
 }
 
@@ -601,6 +641,11 @@ void GameRenderer::drawBoardGrid() {
     for (const auto& line : gridLines) {
         window->draw(line);
     }
+    
+    // Draw hoshi points (star markers)
+    for (const auto& hoshi : hoshiPoints) {
+        window->draw(hoshi);
+    }
 }
 
 void GameRenderer::drawCoordinates() {
@@ -613,14 +658,14 @@ void GameRenderer::drawCoordinates() {
     for (int i = 0; i < BOARD_SIZE; ++i) {
         char label = 'A' + i;
         coordText.setString(std::string(1, label));
-        coordText.setPosition(sf::Vector2f(boardOffset.x + i * cellSize + cellSize/2 - 5, boardOffset.y - 20));
+        coordText.setPosition(sf::Vector2f(boardOffset.x + i * cellSize - 5, boardOffset.y - 20));
         window->draw(coordText);
     }
     
     // Row labels (1-19)
     for (int i = 0; i < BOARD_SIZE; ++i) {
         coordText.setString(std::to_string(i + 1));
-        coordText.setPosition(sf::Vector2f(boardOffset.x - 20, boardOffset.y + i * cellSize + cellSize/2 - 8));
+        coordText.setPosition(sf::Vector2f(boardOffset.x - 20, boardOffset.y + i * cellSize - 8));
         window->draw(coordText);
     }
 }
@@ -628,8 +673,8 @@ void GameRenderer::drawCoordinates() {
 void GameRenderer::drawStone(const Position& pos, CellState state) {
     if (state == EMPTY) return;
     
-    sf::Vector2f screenPos(boardOffset.x + pos.x * cellSize + cellSize/2,
-                          boardOffset.y + pos.y * cellSize + cellSize/2);
+    sf::Vector2f screenPos(boardOffset.x + pos.x * cellSize,
+                          boardOffset.y + pos.y * cellSize);
     
     templateStone.setPosition(screenPos);
     

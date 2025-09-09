@@ -116,6 +116,7 @@ private:
     float cellSize;
     sf::RectangleShape boardBackground;
     std::vector<sf::RectangleShape> gridLines;
+    std::vector<sf::CircleShape> hoshiPoints;
     
     // Stone rendering
     std::vector<std::vector<sf::CircleShape>> stoneSprites;
