@@ -171,14 +171,7 @@ int Board::executeCaptures(const std::vector<Position>& captures) {
     lastCaptures = captures;
     for (const Position& pos : captures) {
         if (isValidPosition(pos.x, pos.y)) {
-            if ((grid[pos.x][pos.y]) == WHITE)
-            {
-                grid[pos.x][pos.y] = BLACK;
-            }
-            else if ((grid[pos.x][pos.y]) == BLACK)
-            {
-                grid[pos.x][pos.y] = WHITE;
-            }
+            grid[pos.x][pos.y] = EMPTY;
         }
     }
     return captures.size();
@@ -325,63 +318,4 @@ bool Board::hasOpenEnds(int x, int y, int dx, int dy, int count, CellState playe
                    grid[endX + dx][endY + dy] == EMPTY;
     
     return startOpen && endOpen;
-}
-
-// Rendering
-void Board::draw(sf::RenderWindow& window) const {
-    // Draw board background
-    sf::RectangleShape background(sf::Vector2f(size * CELL_SIZE, size * CELL_SIZE));
-    background.setPosition(sf::Vector2f(50, 50));
-    background.setFillColor(BOARD_COLOR);
-    window.draw(background);
-    
-    // Draw grid lines
-    for (int i = 0; i <= size; i++) {
-        // Vertical lines
-        sf::RectangleShape vLine(sf::Vector2f(1, size * CELL_SIZE));
-        vLine.setPosition(sf::Vector2f(50 + i * CELL_SIZE, 50));
-        vLine.setFillColor(LINE_COLOR);
-        window.draw(vLine);
-        
-        // Horizontal lines
-        sf::RectangleShape hLine(sf::Vector2f(size * CELL_SIZE, 1));
-        hLine.setPosition(sf::Vector2f(50, 50 + i * CELL_SIZE));
-        hLine.setFillColor(LINE_COLOR);
-        window.draw(hLine);
-    }
-    
-    // Draw pieces
-    for (int x = 0; x < size; x++) {
-        for (int y = 0; y < size; y++) {
-            if (grid[x][y] != EMPTY) {
-                sf::CircleShape piece(CELL_SIZE / 2 - 2);
-                piece.setPosition(sf::Vector2f(50 + x * CELL_SIZE + 2, 50 + y * CELL_SIZE + 2));
-                
-                if (grid[x][y] == BLACK) {
-                    piece.setFillColor(BLACK_STONE);
-                    piece.setOutlineColor(sf::Color::White);
-                } else {
-                    piece.setFillColor(WHITE_STONE);
-                    piece.setOutlineColor(sf::Color::Black);
-                }
-                piece.setOutlineThickness(1);
-                
-                window.draw(piece);
-            }
-        }
-    }
-}
-
-void Board::drawCaptureCount(sf::RenderWindow& window, sf::Font& font) const {
-    // Draw black captures
-    sf::Text blackText(font, "Black Captures: " + std::to_string(blackCaptures), 20);
-    blackText.setPosition(sf::Vector2f(size * CELL_SIZE + 70, 50));
-    blackText.setFillColor(sf::Color::Black);
-    window.draw(blackText);
-    
-    // Draw white captures
-    sf::Text whiteText(font, "White Captures: " + std::to_string(whiteCaptures), 20);
-    whiteText.setPosition(sf::Vector2f(size * CELL_SIZE + 70, 80));
-    whiteText.setFillColor(sf::Color::White);
-    window.draw(whiteText);
 }

@@ -80,9 +80,7 @@ public:
     int countConsecutive(int x, int y, int dx, int dy, CellState player) const;
     bool hasOpenEnds(int x, int y, int dx, int dy, int count, CellState player) const;
     
-    // Rendering
-    void draw(sf::RenderWindow& window) const;
-    void drawCaptureCount(sf::RenderWindow& window, sf::Font& font) const;
+    // Rendering removed: use GameRenderer for all drawing
     
 private:
     // Helper methods for win detection

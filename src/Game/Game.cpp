@@ -25,7 +25,11 @@ const int Game::UI_PANEL_WIDTH = 250;
 const int Game::BOARD_MARGIN = 50;
 
 Game::Game() 
-    : window(sf::VideoMode(sf::Vector2u(WINDOW_WIDTH + UI_PANEL_WIDTH, WINDOW_HEIGHT)), "Gomoku - Enhanced with AI Timer")
+    : window(
+        sf::VideoMode(sf::Vector2u(WINDOW_WIDTH + UI_PANEL_WIDTH, WINDOW_HEIGHT)),
+        "Gomoku - Enhanced with AI Timer",
+        sf::Style::Titlebar | sf::Style::Close
+    )
     , aiTimer(std::make_unique<AITimer>("AI Player"))
     , debugUI(std::make_unique<DebugUI>())
     , renderer(std::make_unique<GameRenderer>())
@@ -123,9 +127,6 @@ void Game::handleWindowEvents(const sf::Event& event) {
     if (event.is<sf::Event::Closed>()) {
         running = false;
         window.close();
-    } else if (event.is<sf::Event::Resized>()) {
-        // Handle window resize
-        calculateBoardDimensions();
     }
 }
 
@@ -492,34 +493,11 @@ void Game::render() {
 }
 
 void Game::renderBoard() {
-    board.draw(window);
-    
-    // Highlight last move if available
-    if (!moveHistory.empty()) {
-        Position lastMove = moveHistory.back();
-        sf::CircleShape highlight(cellSize / 2 - 1);
-        highlight.setPosition(sf::Vector2f(boardOffset.x + lastMove.x * cellSize + 1, 
-                                          boardOffset.y + lastMove.y * cellSize + 1));
-        highlight.setFillColor(sf::Color::Transparent);
-        highlight.setOutlineColor(sf::Color::Red);
-        highlight.setOutlineThickness(2);
-        window.draw(highlight);
-    }
+    // Legacy board rendering removed. Rendering is handled by GameRenderer.
 }
 
 void Game::renderUI() {
-    renderGameInfo();
-    
-    // Draw UI panel background
-    sf::RectangleShape uiPanel(sf::Vector2f(UI_PANEL_WIDTH, WINDOW_HEIGHT));
-    uiPanel.setPosition(sf::Vector2f(WINDOW_WIDTH, 0));
-    uiPanel.setFillColor(sf::Color(220, 220, 220));
-    window.draw(uiPanel);
-    
-    // Draw capture counts if font is available
-    if (font.getInfo().family != "") {
-        board.drawCaptureCount(window, font);
-    }
+    // Legacy UI rendering removed. Use GameRenderer for panels, info, and capture counts.
 }
 
 void Game::renderGameInfo() {

@@ -17,4 +17,3 @@ must still keep performance for its own sake in mind : You will
 not get all the points if your implementation wins too slowly, or
 if your implementation seems lazily done (Low search depth, naive
 implementation, etc...)
-4
