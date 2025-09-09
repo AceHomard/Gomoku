@@ -359,8 +359,7 @@ void GameRenderer::setBoardParameters(const sf::Vector2f& offset, float size) {
 void GameRenderer::render() {
     if (!window) return;
     
-    window->clear(sf::Color(250, 250, 250));
-    
+    // Don't clear or display here - let the main game loop handle it
     renderBoard();
     renderStones();
     renderUI();
@@ -380,8 +379,6 @@ void GameRenderer::render() {
     
     // Render AI timer
     aiTimer->drawAIStatus(*window, window->getSize().x - 240, 10, 230, 120);
-    
-    window->display();
 }
 
 void GameRenderer::renderBoard() {

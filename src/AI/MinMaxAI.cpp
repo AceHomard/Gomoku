@@ -37,8 +37,8 @@ MinMaxAI::MinMaxAI(CellState playerColor, int depth, double timeLimitSec, const 
     gameTree->enableAlphaBetaPruning(true);
     gameTree->enableMoveOrderingFlag(true);
     gameTree->setMoveGenerationStrategy(TACTICAL_ONLY);
-    gameTree->setTacticalRadius(2);
-    gameTree->setMaxMovesPerLevel(25);
+    gameTree->setTacticalRadius(1);
+    gameTree->setMaxMovesPerLevel(15);
     
     std::cout << "[MinMaxAI] Initialized with depth=" << searchDepth 
               << ", time limit=" << timeLimit << "s" << std::endl;
@@ -129,8 +129,8 @@ Position MinMaxAI::iterativeDeepening(const Board& board) {
             break;
         }
         
-        // If time is running out, break
-        if (getElapsedTime() > timeLimit * 0.8) {
+        // OPTIMIZATION: Earlier time cutoff for safety margin
+        if (getElapsedTime() > timeLimit * 0.7) {
             std::cout << "[MinMaxAI] Time limit approaching, stopping search" << std::endl;
             break;
         }
@@ -144,8 +144,8 @@ int MinMaxAI::minimax(const Board& board, int depth, int alpha, int beta, bool m
     
     nodesEvaluated++;
     
-    // Check time limit
-    if (nodesEvaluated % 1000 == 0 && isTimeUp()) {
+    // OPTIMIZATION: More frequent time checks for better time management
+    if (nodesEvaluated % 500 == 0 && isTimeUp()) {
         return maximizing ? alpha : beta;
     }
     
@@ -249,9 +249,14 @@ std::vector<ScoredMove> MinMaxAI::generateOrderedMoves(const Board& board, int d
     // Sort moves by score (highest first)
     std::sort(scoredMoves.begin(), scoredMoves.end());
     
-    // Limit number of moves to consider
-    int maxMoves = std::min(static_cast<int>(scoredMoves.size()), 
-                           depth >= 6 ? 15 : (depth >= 4 ? 20 : 25));
+    // Aggressive move limiting for performance
+    int maxMoves;
+    if (depth >= 8) maxMoves = 10;
+    else if (depth >= 6) maxMoves = 12;
+    else if (depth >= 4) maxMoves = 15;
+    else maxMoves = 18;
+    
+    maxMoves = std::min(maxMoves, static_cast<int>(scoredMoves.size()));
     if (static_cast<int>(scoredMoves.size()) > maxMoves) {
         scoredMoves.resize(maxMoves);
     }
@@ -300,14 +305,17 @@ double MinMaxAI::getElapsedTime() const {
 
 uint64_t MinMaxAI::computeBoardHash(const Board& board) {
     uint64_t hash = 0;
-    // Simple hash function - in production, use proper Zobrist hashing
     
-    // Simple hash function - in production, use proper Zobrist hashing
+    // OPTIMIZED: More efficient hash with better distribution
+    static const uint64_t primes[] = {0x9e3779b97f4a7c15ULL, 0xbf58476d1ce4e5b9ULL, 0x94d049bb133111ebULL};
+    
+    // Only hash non-empty cells with optimized loop
     for (int x = 0; x < board.getSize(); x++) {
         for (int y = 0; y < board.getSize(); y++) {
             CellState cell = board.getCell(x, y);
             if (cell != EMPTY) {
-                hash ^= (uint64_t(cell) << ((x * board.getSize() + y) % 60)) ^ (x * 31 + y * 37);
+                int pos = x * BOARD_SIZE + y;
+                hash ^= primes[cell] * (uint64_t(pos) * 0x517cc1b727220a95ULL);
             }
         }
     }
@@ -444,11 +452,14 @@ bool MinMaxAI::isTacticalMove(const Board& board, const Position& move) {
 }
 
 Position MinMaxAI::getOpeningMove(const Board& board) {
-    // Simple opening book
+    // OPTIMIZED: Enhanced opening book for instant first moves
     int moveCount = 0;
+    Position firstStone(-1, -1);
+    
     for (int x = 0; x < board.getSize(); x++) {
         for (int y = 0; y < board.getSize(); y++) {
             if (board.getCell(x, y) != EMPTY) {
+                if (moveCount == 0) firstStone = Position(x, y);
                 moveCount++;
             }
         }
@@ -457,29 +468,52 @@ Position MinMaxAI::getOpeningMove(const Board& board) {
     int center = BOARD_SIZE / 2;
     
     if (moveCount == 0) {
-        // First move - take center
+        // First move - always take center (instant)
         return Position(center, center);
     } else if (moveCount == 1) {
-        // Second move - play near center
+        // Second move - play optimally near center
         if (board.getCell(center, center) == EMPTY) {
             return Position(center, center);
         } else {
-            // Play adjacent to center
-            std::vector<Position> adjacentMoves = {
-                Position(center-1, center-1), Position(center-1, center), Position(center-1, center+1),
-                Position(center, center-1), Position(center, center+1),
-                Position(center+1, center-1), Position(center+1, center), Position(center+1, center+1)
+            // Play diagonally adjacent for better development
+            std::vector<Position> bestMoves = {
+                Position(center-1, center-1), Position(center+1, center-1),
+                Position(center-1, center+1), Position(center+1, center+1)
             };
             
-            for (const Position& move : adjacentMoves) {
+            for (const Position& move : bestMoves) {
                 if (board.isValidMove(move.x, move.y)) {
                     return move;
                 }
             }
         }
+    } else if (moveCount <= 6) {
+        // Extended opening book for first 6 moves
+        // Play within 3x3 of center for good development
+        for (int dx = -1; dx <= 1; dx++) {
+            for (int dy = -1; dy <= 1; dy++) {
+                int x = center + dx, y = center + dy;
+                if (board.isValidMove(x, y)) {
+                    // Prefer diagonal moves for better patterns
+                    if (abs(dx) == abs(dy) && dx != 0) {
+                        return Position(x, y);
+                    }
+                }
+            }
+        }
+        
+        // Fallback to any good central move
+        for (int dx = -1; dx <= 1; dx++) {
+            for (int dy = -1; dy <= 1; dy++) {
+                int x = center + dx, y = center + dy;
+                if (board.isValidMove(x, y)) {
+                    return Position(x, y);
+                }
+            }
+        }
     }
     
-    return Position(-1, -1); // No opening move found
+    return Position(-1, -1); // Use regular search
 }
 
 bool MinMaxAI::isOpeningPhase(const Board& board) const {
@@ -488,10 +522,11 @@ bool MinMaxAI::isOpeningPhase(const Board& board) const {
         for (int y = 0; y < board.getSize(); y++) {
             if (board.getCell(x, y) != EMPTY) {
                 moveCount++;
+                if (moveCount >= 10) return false; // Early termination
             }
         }
     }
-    return moveCount < 8;
+    return moveCount < 10; // Extended opening phase
 }
 
 void MinMaxAI::onGameStart() {

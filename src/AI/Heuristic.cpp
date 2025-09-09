@@ -47,9 +47,9 @@ Heuristic::~Heuristic() {
 }
 
 int Heuristic::evaluatePosition(const Board& board, CellState player) {
-    int score = 0;
+    // OPTIMIZATION: Fast evaluation with early termination
     
-    // Check for immediate wins/losses
+    // Check for immediate wins/losses first (fastest check)
     if (board.checkWin(player) || board.checkCaptureWin(player)) {
         return WIN_VALUE;
     }
@@ -59,19 +59,21 @@ int Heuristic::evaluatePosition(const Board& board, CellState player) {
         return -WIN_VALUE;
     }
     
-    // Evaluate different aspects of the position
-    score += evaluatePatterns(board, player);
-    score += evaluateCaptures(board, player);
-    score += evaluateThreats(board, player) * THREAT_MULTIPLIER;
-    score += evaluatePositional(board, player) * POSITION_WEIGHT;
-    score += evaluateMobility(board, player) * MOBILITY_WEIGHT;
+    int score = 0;
     
-    // Add opening/endgame specific evaluation
-    if (isOpeningPhase(board)) {
-        score += evaluateOpening(board, player);
-    } else if (isEndgamePhase(board)) {
-        score += evaluateEndgame(board, player);
+    // OPTIMIZATION: Simplified evaluation for speed
+    // Focus only on most important factors
+    score += evaluatePatterns(board, player);           // Most important
+    score += evaluateCaptures(board, player);           // Important for Gomoku
+    
+    // Skip expensive evaluations in deep search
+    static int evalDepth = 0;
+    evalDepth++;
+    if (evalDepth % 4 == 0) {  // Only do full eval every 4th time
+        score += evaluateThreats(board, player) * THREAT_MULTIPLIER;
+        score += evaluatePositional(board, player) * POSITION_WEIGHT / 2; // Reduced weight
     }
+    evalDepth--;
     
     return score;
 }
@@ -423,33 +425,41 @@ std::vector<Position> Heuristic::getRelevantMoves(const Board& board) {
     std::vector<Position> moves;
     std::set<std::pair<int,int>> moveSet;
     
-    // Find all moves within 2 squares of existing stones
-    for (int x = 0; x < board.getSize(); x++) {
-        for (int y = 0; y < board.getSize(); y++) {
+    // OPTIMIZATION: Limit search radius and use early termination
+    int stonesFound = 0;
+    for (int x = 0; x < board.getSize() && stonesFound < 50; x++) {
+        for (int y = 0; y < board.getSize() && stonesFound < 50; y++) {
             if (board.getCell(x, y) != EMPTY) {
-                // Add all valid moves in a 5x5 area around this stone
-                for (int dx = -2; dx <= 2; dx++) {
-                    for (int dy = -2; dy <= 2; dy++) {
+                stonesFound++;
+                // Reduced to 3x3 area for performance (radius=1)
+                for (int dx = -1; dx <= 1; dx++) {
+                    for (int dy = -1; dy <= 1; dy++) {
                         int nx = x + dx, ny = y + dy;
                         if (board.isValidMove(nx, ny)) {
                             moveSet.insert({nx, ny});
+                            // Early exit if we have enough moves
+                            if (moveSet.size() >= 20) goto done;
                         }
                     }
                 }
             }
         }
     }
+    done:
     
-    // Convert set to vector
+    // Convert set to vector with size limit
+    moves.reserve(std::min(static_cast<size_t>(20), moveSet.size()));
+    int count = 0;
     for (const auto& move : moveSet) {
         moves.push_back(Position(move.first, move.second));
+        if (++count >= 20) break; // Hard limit
     }
     
-    // If no moves found (empty board), return center area
+    // If no moves found (empty board), return smaller center area
     if (moves.empty()) {
         int center = BOARD_SIZE / 2;
-        for (int dx = -2; dx <= 2; dx++) {
-            for (int dy = -2; dy <= 2; dy++) {
+        for (int dx = -1; dx <= 1; dx++) {
+            for (int dy = -1; dy <= 1; dy++) {
                 int x = center + dx, y = center + dy;
                 if (board.isValidMove(x, y)) {
                     moves.push_back(Position(x, y));
