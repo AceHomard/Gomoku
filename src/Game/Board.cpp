@@ -171,7 +171,14 @@ int Board::executeCaptures(const std::vector<Position>& captures) {
     lastCaptures = captures;
     for (const Position& pos : captures) {
         if (isValidPosition(pos.x, pos.y)) {
-            grid[pos.x][pos.y] = EMPTY;
+            if ((grid[pos.x][pos.y]) == WHITE)
+            {
+                grid[pos.x][pos.y] = BLACK;
+            }
+            else if ((grid[pos.x][pos.y]) == BLACK)
+            {
+                grid[pos.x][pos.y] = WHITE;
+            }
         }
     }
     return captures.size();
