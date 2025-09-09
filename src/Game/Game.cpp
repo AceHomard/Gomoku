@@ -59,14 +59,14 @@ Game::Game()
     std::cout << "Enhanced UI initialized with mandatory AI Timer" << std::endl;
     
     calculateBoardDimensions();
-    setupPlayers(HUMAN_VS_HUMAN);
+    startNewGame(HUMAN_VS_HUMAN);  // Start in PLAYING state instead of MENU
 }
 
 Game::~Game() {
 }
 
 bool Game::initializeWindow() {
-    window.setFramerateLimit(60);
+    // Use VSync instead of framerate limit to prevent conflicting settings
     window.setVerticalSyncEnabled(true);
     return true;
 }
