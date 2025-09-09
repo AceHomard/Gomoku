@@ -33,3 +33,5 @@ dist/
 # Compiler generated files
 *.gch
 *.pch
+
+/.claude
