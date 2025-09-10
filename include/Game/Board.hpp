@@ -40,7 +40,6 @@ private:
     int size;
     int blackCaptures;
     int whiteCaptures;
-    std::vector<Position> lastCaptures;  // For undo functionality
 
 public:
     Board(int boardSize = BOARD_SIZE);

@@ -512,7 +512,6 @@ void GameRenderer::renderControls() {
     std::string controls = "Controls:\n"
                           "F1 - Toggle Debug\n"
                           "R - Restart Game\n"
-                          "U - Undo Move\n"
                           "1/2/3 - Game Modes\n"
                           "ESC - Pause";
     

@@ -12,6 +12,7 @@
 
 #include "Game/Board.hpp"
 #include <string>
+#include <iostream>
 
 // Build a directional line centered on (x,y) over k in [-5..5]
 static std::string buildDirectionalLine(const Board* board, int x, int y, int dx, int dy, CellState player) {
@@ -84,7 +85,6 @@ void Board::clear() {
     }
     blackCaptures = 0;
     whiteCaptures = 0;
-    lastCaptures.clear();
 }
 
 bool Board::placePiece(int x, int y, CellState player) {
@@ -224,7 +224,7 @@ std::vector<Position> Board::checkCaptureDirection(int x, int y, int dx, int dy,
 }
 
 int Board::executeCaptures(const std::vector<Position>& captures) {
-    lastCaptures = captures;
+    // Silent in core board logic: avoids flooding logs during AI simulations.
     for (const Position& pos : captures) {
         if (isValidPosition(pos.x, pos.y)) {
             grid[pos.x][pos.y] = EMPTY;

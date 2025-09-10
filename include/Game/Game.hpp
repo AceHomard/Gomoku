@@ -62,11 +62,7 @@ private:
     bool gameWon;
     CellState winner;
     std::string statusMessage;
-    
-    // Move history for undo functionality
-    std::vector<Position> moveHistory;
-    std::vector<std::vector<Position>> captureHistory;
-    
+   
     // Move suggestion system
     Position currentSuggestion;
     bool suggestionActive;
@@ -95,7 +91,6 @@ public:
     // Move processing
     bool makeMove(int x, int y);
     bool processMove(Position move, Player* player);
-    bool undoLastMove();
     
     // Player management
     void switchPlayer();
