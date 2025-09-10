@@ -21,8 +21,7 @@ bool Rules::isValidMove(const Board& board, int x, int y, CellState player) {
     if (!board.isValidMove(x, y)) {
         return false;
     }
-    
-    // Check double-three rule
+    // Apply double-three rule
     if (violatesDoubleThreeRule(board, x, y, player)) {
         return false;
     }
@@ -169,22 +168,15 @@ bool Rules::violatesDoubleThreeRule(const Board& board, int x, int y, CellState 
 }
 
 int Rules::countFreeThrees(const Board& board, int x, int y, CellState player) {
-    // Create a temporary board with the move placed
-    Board tempBoard = board;
-    const_cast<Board&>(tempBoard).placePiece(x, y, player);
-    
     int count = 0;
-    
-    // Check each direction for free-threes
+    // Evaluate directly on the provided board. Board::isFreeThree simulates the placement internally
     for (int i = 0; i < NUM_DIRECTIONS; i++) {
         int dx = DIRECTIONS[i][0];
         int dy = DIRECTIONS[i][1];
-        
-        if (isFreeThree(tempBoard, x, y, dx, dy, player)) {
+        if (isFreeThree(board, x, y, dx, dy, player)) {
             count++;
         }
     }
-    
     return count;
 }
 

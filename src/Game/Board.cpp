@@ -91,15 +91,15 @@ bool Board::placePiece(int x, int y, CellState player) {
     if (!isValidMove(x, y)) {
         return false;
     }
-    
-    // Check double-three rule before placing
+    // Enforce double-three rule before placing (captures are applied after placement)
     if (isDoubleThree(x, y, player)) {
         return false;
     }
-    
+
+    // Place the stone
     grid[x][y] = player;
-    
-    // Check and execute captures
+
+    // Check and execute captures after placing
     std::vector<Position> captures = checkCaptures(x, y, player);
     if (!captures.empty()) {
         int capturedCount = executeCaptures(captures);

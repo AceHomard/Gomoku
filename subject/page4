@@ -1,4 +1,3 @@
-Gomoku Yeah, well, your brain has to fry sometime
 Last point: You have to display, somewhere in your user interface:
 •A timer that counts how much time your AI takes to find its next move.
 This is so your grader can precisely evaluate the performance of your

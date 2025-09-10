@@ -17,9 +17,14 @@ Both of these scenarios are free-threes:
 A double-three is a move that introduces two simultaneous free-three alignments. You
 can’t block a double-three.
 
-Gomoku Yeah, well, your brain has to fry sometime
-In this scenario, by playing in a, Red would introduce a double-three, therefore this is a
-forbidden move. However, if there were a blue stone in b, one of the three-aligned would
-be obstructed, therefore the move in awould be legal.
+. . . . . . . .
+. B . . . . . .
+. . B . . . . .
+. . . . . . . .
+. B W C A B B .
+. . . . . . . .
+In this scenario, by playing in 'A', Black would introduce a double-three, therefore this is a
+forbidden move. However, if there were a White stone in 'C', one of the three-aligned would
+be obstructed, therefore the move in 'A' would be legal.
 It is important to note that it is not forbidden to introduce a
 double-three by capturing a pair.
