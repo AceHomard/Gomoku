@@ -66,7 +66,7 @@ Position MinMaxAI::makeMove(const Board& board) {
         std::vector<Position> winningMoves = heuristic->findWinningMoves(board, color);
         std::cout << "[MinMaxAI] winningMoves size=" << winningMoves.size() << std::endl;
         if (!winningMoves.empty()) {
-            std::cout << "[MinMaxAI] Found immediate winning move!" << std::endl;
+            std::cout << "[MinMaxAI] Found immediate winning move! (" << winningMoves[0].x << ", " << winningMoves[0].y << ")" << std::endl;
             return winningMoves[0];
         }
         

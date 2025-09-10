@@ -28,7 +28,7 @@ const int Game::BOARD_MARGIN = 50;
 Game::Game() 
     : window(
         sf::VideoMode(sf::Vector2u(WINDOW_WIDTH + UI_PANEL_WIDTH, WINDOW_HEIGHT)),
-        "Gomoku - Enhanced with AI Timer",
+        "Gomoku",
         sf::Style::Titlebar | sf::Style::Close
     )
     , aiTimer(std::make_unique<AITimer>("AI Player"))
@@ -44,7 +44,7 @@ Game::Game()
     , running(true)
     , gameWon(false)
     , winner(EMPTY)
-    , statusMessage("Welcome to Gomoku! Press F1 for Debug Mode")
+    , statusMessage("Welcome to Gomoku!")
     , currentSuggestion(-1, -1)
     , suggestionActive(false)
     , cellSize(CELL_SIZE)
@@ -157,11 +157,9 @@ void Game::handleMouseClick(int mouseX, int mouseY) {
 void Game::handleKeyPress(sf::Keyboard::Key key) {
     switch (key) {
         case sf::Keyboard::Key::Escape:
-            if (state == PLAYING) {
-                pause();
-            } else if (state == PAUSED) {
-                resume();
-            }
+            // ESC now quits the game
+            running = false;
+            window.close();
             break;
             
         case sf::Keyboard::Key::R:
@@ -188,6 +186,14 @@ void Game::handleKeyPress(sf::Keyboard::Key key) {
             
         case sf::Keyboard::Key::F1:
             toggleDebugMode();
+            break;
+        case sf::Keyboard::Key::P:
+        case sf::Keyboard::Key::Space:
+            if (state == PLAYING) {
+                pause();
+            } else if (state == PAUSED) {
+                resume();
+            }
             break;
         case sf::Keyboard::Key::S:
             // Show move suggestion in Human vs Human mode
@@ -350,6 +356,15 @@ void Game::switchPlayer() {
     } else {
         currentPlayer = player1.get();
     }
+    if (currentPlayer) {
+        if (mode == AI_VS_AI && player1 && player2) {
+            // Ne pas écraser le message de simulation en AI vs AI
+            statusMessage = player1->getName() + std::string(" vs ") + player2->getName() + std::string(" | simulation en cours");
+            return;
+        }
+        std::string colorName = (currentPlayer->getColor() == BLACK) ? "Black" : "White";
+        statusMessage = currentPlayer->getName() + " (" + colorName + ")'s turn";
+    }
 }
 
 void Game::setupPlayers(GameMode gameMode) {
@@ -386,7 +401,14 @@ void Game::startNewGame(GameMode gameMode) {
     reset();
     setupPlayers(gameMode);
     state = PLAYING;
-    statusMessage = currentPlayer->getName() + "'s turn";
+    if (mode == AI_VS_AI && player1 && player2) {
+        // Message spécifique pour AI vs AI
+        statusMessage = player1->getName() + std::string(" vs ") + player2->getName() + std::string(" | simulation en cours");
+    } else {
+        // Include color in status
+        std::string colorName = (currentPlayer->getColor() == BLACK) ? "Black" : "White";
+        statusMessage = currentPlayer->getName() + " (" + colorName + ")'s turn";
+    }
 }
 
 void Game::reset() {
@@ -405,7 +427,7 @@ void Game::reset() {
 void Game::pause() {
     if (state == PLAYING) {
         state = PAUSED;
-        statusMessage = "Game paused - Press ESC to resume";
+        statusMessage = "Paused - Press P or Space to resume";
     }
 }
 
@@ -413,7 +435,13 @@ void Game::resume() {
     if (state == PAUSED) {
         state = PLAYING;
         if (currentPlayer) {
-            statusMessage = currentPlayer->getName() + "'s turn";
+            if (mode == AI_VS_AI && player1 && player2) {
+                // Conserver le message AI vs AI
+                statusMessage = player1->getName() + std::string(" vs ") + player2->getName() + std::string(" | simulation en cours");
+                return;
+            }
+            std::string colorName = (currentPlayer->getColor() == BLACK) ? "Black" : "White";
+            statusMessage = currentPlayer->getName() + " (" + colorName + ")'s turn";
         }
     }
 }
@@ -428,14 +456,15 @@ void Game::endGame(CellState winnerColor) {
         std::cout << "[End] Draw" << std::endl;
     } else {
         std::string winnerName = getPlayerName(winner);
+        std::string colorName = (winner == BLACK) ? "Black" : "White";
         
         // Determine win type
         if (Rules::hasCaptureWin(board, winner)) {
-            statusMessage = winnerName + " wins by capture!";
+            statusMessage = winnerName + " (" + colorName + ") wins by capture!";
             std::cout << "[End] " << winnerName << " wins by capture (BLACK="
                       << board.getCaptureCount(BLACK) << ", WHITE=" << board.getCaptureCount(WHITE) << ")" << std::endl;
         } else {
-            statusMessage = winnerName + " wins by alignment!";
+            statusMessage = winnerName + " (" + colorName + ") wins by alignment!";
             std::cout << "[End] " << winnerName << " wins by alignment" << std::endl;
         }
     }
@@ -580,7 +609,7 @@ void Game::renderEnhancedUI() {
     
     // Always render AI timer (MANDATORY requirement)
     if (aiTimer) {
-        float timerX = window.getSize().x - 250;
+        float timerX = window.getSize().x - 240;
         float timerY = 10;
         aiTimer->drawAIStatus(window, timerX, timerY, 240, 100);
     }

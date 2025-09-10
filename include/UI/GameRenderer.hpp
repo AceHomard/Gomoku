@@ -138,8 +138,6 @@ private:
     // Animation system
     std::vector<std::unique_ptr<StoneAnimation>> activeAnimations;
     
-    // UI components
-    std::unique_ptr<AITimer> aiTimer;
     std::unique_ptr<DebugUI> debugUI;
     
     // Highlighting system
@@ -178,7 +176,6 @@ public:
     void renderControls();
     
     // Enhanced features
-    void renderLastMoveHighlight();
     void renderHoverPreview();
     
     // Animation system
@@ -191,7 +188,6 @@ public:
     void clearHighlights();
     
     // UI component access
-    AITimer* getAITimer() { return aiTimer.get(); }
     DebugUI* getDebugUI() { return debugUI.get(); }
     
     // Event handling support

@@ -258,7 +258,6 @@ GameRenderer::GameRenderer()
 {
     currentTheme = UITheme::createDefaultTheme();
     
-    aiTimer = std::make_unique<AITimer>("AI");
     debugUI = std::make_unique<DebugUI>();
     
     setupDefaultFonts();
@@ -337,7 +336,6 @@ bool GameRenderer::loadFonts(const std::string& mainFontPath, const std::string&
         }
         
         setupTexts();
-        aiTimer->loadFont();
         debugUI->loadFont();
     }
     
@@ -392,8 +390,7 @@ void GameRenderer::calculateLayout(int windowWidth, int windowHeight) {
     statusPanel.setSize(sf::Vector2f(windowWidth, STATUS_HEIGHT));
     statusPanel.setPosition(sf::Vector2f(0, windowHeight - STATUS_HEIGHT));
     
-    // Update AI timer and debug UI positions
-    aiTimer->setPosition(windowWidth - PANEL_WIDTH + 10, 10);
+    // Update debug UI positions
     debugUI->setPosition(windowWidth - PANEL_WIDTH + 10, 150);
     debugUI->setSize(PANEL_WIDTH - 20, 300);
 }
@@ -412,7 +409,6 @@ void GameRenderer::render() {
     renderStones();
     renderHoverPreview();
     renderUI();
-    renderLastMoveHighlight();
     
     // Update and render animations
     updateAnimations();
@@ -425,9 +421,6 @@ void GameRenderer::render() {
         debugUI->drawOverlay(*window, boardOffset, cellSize);
         debugUI->draw(*window);
     }
-    
-    // Render AI timer
-    aiTimer->drawAIStatus(*window, window->getSize().x - 240, 10, 230, 120);
 }
 
 void GameRenderer::renderBoard() {
@@ -513,18 +506,12 @@ void GameRenderer::renderControls() {
                           "F1 - Toggle Debug\n"
                           "R - Restart Game\n"
                           "1/2/3 - Game Modes\n"
-                          "ESC - Pause";
+                          "P/Space - Pause/Resume\n"
+                          "ESC - Quit";
     
     controlsHelpText.setString(controls);
     controlsHelpText.setPosition(sf::Vector2f(window->getSize().x - 240, window->getSize().y - 200));
     window->draw(controlsHelpText);
-}
-
-void GameRenderer::renderLastMoveHighlight() {
-    if (!gameRef) return;
-    
-    // This would be implemented with access to game's move history
-    // For now, just show a placeholder implementation
 }
 
 void GameRenderer::addAnimation(StoneAnimation::Type type, const Position& pos, float duration) {
@@ -617,9 +604,6 @@ void GameRenderer::setupUI() {
 void GameRenderer::setupTexts() {
     if (!fontsLoaded) return;
     
-    gameTitle = sf::Text(mainFont, "Gomoku", 18);
-    gameTitle.setFillColor(currentTheme.primaryText);
-    
     currentPlayerText = sf::Text(mainFont, "", 16);
     currentPlayerText.setFillColor(currentTheme.highlightText);
     
@@ -706,17 +690,16 @@ void GameRenderer::drawCoordinates() {
     sf::Text coordText(monoFont, "", 10);
     coordText.setFillColor(currentTheme.secondaryText);
     
-    // Column labels (A-S)
+    // Column labels (1-19)
     for (int i = 0; i < BOARD_SIZE; ++i) {
-        char label = 'A' + i;
-        coordText.setString(std::string(1, label));
+        coordText.setString(std::to_string(i));
         coordText.setPosition(sf::Vector2f(boardOffset.x + i * cellSize - 5, boardOffset.y - 20));
         window->draw(coordText);
     }
-    
+
     // Row labels (1-19)
     for (int i = 0; i < BOARD_SIZE; ++i) {
-        coordText.setString(std::to_string(i + 1));
+        coordText.setString(std::to_string(i));
         coordText.setPosition(sf::Vector2f(boardOffset.x - 20, boardOffset.y + i * cellSize - 8));
         window->draw(coordText);
     }
@@ -771,36 +754,18 @@ void GameRenderer::updateStatusText() {
         statusText.setString("Ready");
         return;
     }
-    
-    std::string status;
-    switch (gameRef->getGameState()) {
-        case PLAYING:
-            if (gameRef->getCurrentPlayer()) {
-                status = gameRef->getCurrentPlayer()->getName() + "'s turn";
-            } else {
-                status = "Playing";
-            }
-            break;
-        case GAME_OVER:
-            status = "Game Over";
-            break;
-        case PAUSED:
-            status = "Paused";
-            break;
-        case MENU:
-            status = "Menu";
-            break;
-    }
-    
-    statusText.setString(status);
+    // Single source of truth: delegate to Game's statusMessage
+    statusText.setString(gameRef->getStatusMessage());
 }
 
 void GameRenderer::updateCaptureText() {
-    if (!gameRef) return;
+    if (!gameRef || !boardRef) return;
+    
+    int blackCaptures = boardRef->getCaptureCount(BLACK);
+    int whiteCaptures = boardRef->getCaptureCount(WHITE);
     
     std::ostringstream oss;
-    // This would need access to capture counts from players
-    oss << "Captures: Player 1: 0, Player 2: 0";
+    oss << "Captures: Black=" << blackCaptures << ", White=" << whiteCaptures;
     captureCountText.setString(oss.str());
 }
 

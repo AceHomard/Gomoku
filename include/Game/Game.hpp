@@ -104,6 +104,7 @@ public:
     GameState getGameState() const { return state; }
     GameMode getGameMode() const { return mode; }
     CellState getWinner() const { return winner; }
+    const std::string& getStatusMessage() const { return statusMessage; }
     
     // Move suggestion for hotseat mode
     void showMoveSuggestion();
