@@ -67,10 +67,9 @@ public:
     // Double-three rule
     bool isDoubleThree(int x, int y, CellState player) const;
     std::vector<Position> findFreeThrees(int x, int y, CellState player) const;
-    
-    // Pattern detection
     bool isFreeThree(int x, int y, int dx, int dy, CellState player) const;
     bool canFormUnstoppableFour(int x, int y, int dx, int dy, CellState player) const;
+    bool canCreateUnstoppableFour(int x, int y, int dx, int dy, CellState player) const;
     
     // Utility functions
     bool isValidPosition(int x, int y) const;

@@ -11,7 +11,63 @@
 /* ************************************************************************** */
 
 #include "Game/Board.hpp"
-#include <iostream>
+#include <string>
+
+// Build a directional line centered on (x,y) over k in [-5..5]
+static std::string buildDirectionalLine(const Board* board, int x, int y, int dx, int dy, CellState player) {
+    std::string line;
+    line.reserve(11);
+    for (int k = -5; k <= 5; ++k) {
+        int nx = x + k * dx;
+        int ny = y + k * dy;
+        if (!board->isValidPosition(nx, ny)) {
+            line.push_back('B'); // blocker (out of bounds)
+        } else if (k == 0) {
+            line.push_back('P'); // simulated placement is the player
+        } else {
+            CellState c = board->getCell(nx, ny);
+            line.push_back(c == EMPTY ? 'E' : (c == player ? 'P' : 'B'));
+        }
+    }
+    return line;
+}
+
+// Return true if substring contains an open four pattern EPPPP E and center is inside
+static bool containsOpenFour(const std::string& s, int centerIdx) {
+    const int n = (int)s.size();
+    for (int i = 0; i + 6 <= n; ++i) {
+        if (s.compare(i, 6, "EPPPPE") == 0) {
+            if (centerIdx >= i && centerIdx < i + 6) return true;
+        }
+    }
+    return false;
+}
+
+// Return true if line contains an open-three pattern that includes the center index
+static bool matchesOpenThree(const std::string& line, int centerIdx) {
+    const int n = (int)line.size();
+    // Direct open-three patterns
+    for (int i = 0; i + 5 <= n; ++i) {
+        if (line.compare(i, 5, "EPPPE") == 0) {
+            if (centerIdx >= i && centerIdx < i + 5) return true;
+        }
+    }
+    for (int i = 0; i + 6 <= n; ++i) {
+        if (line.compare(i, 6, "EP.PPE") == 0 || line.compare(i, 6, "EPP.PE") == 0) {
+            if (centerIdx >= i && centerIdx < i + 6) return true;
+        }
+    }
+
+    // Threat-based: can we play one more P to obtain an open four EPPPPE including the center?
+    // Try replacing each E with P and test for EPPPPE
+    for (int j = 0; j < n; ++j) {
+        if (line[j] != 'E') continue;
+        std::string tmp = line;
+        tmp[j] = 'P';
+        if (containsOpenFour(tmp, centerIdx)) return true;
+    }
+    return false;
+}
 
 Board::Board(int boardSize) : size(boardSize), blackCaptures(0), whiteCaptures(0) {
     grid.resize(size, std::vector<CellState>(size, EMPTY));
@@ -184,7 +240,7 @@ bool Board::isDoubleThree(int x, int y, CellState player) const {
 }
 
 std::vector<Position> Board::findFreeThrees(int x, int y, CellState player) const {
-    std::vector<Position> freeThrees;
+    std::vector<Position> freeThreeDirections;
     
     // Temporarily place the piece
     const_cast<Board*>(this)->grid[x][y] = player;
@@ -195,26 +251,31 @@ std::vector<Position> Board::findFreeThrees(int x, int y, CellState player) cons
     for (int i = 0; i < 4; i++) {
         int dx = directions[i][0];
         int dy = directions[i][1];
-        
         if (isFreeThree(x, y, dx, dy, player)) {
-            freeThrees.push_back(Position(x, y));
+            // Store the direction vector instead of just the position
+            freeThreeDirections.push_back(Position(dx, dy));
         }
     }
     
     // Remove the temporary piece
     const_cast<Board*>(this)->grid[x][y] = EMPTY;
     
-    return freeThrees;
+    return freeThreeDirections;
 }
 
 bool Board::isFreeThree(int x, int y, int dx, int dy, CellState player) const {
-    int count = countConsecutive(x, y, dx, dy, player);
+    // Un "trois libre" est un pattern qui peut devenir un quatre gagnant
+    // après avoir placé une pierre à (x,y)
     
-    if (count == 3) {
-        return canFormUnstoppableFour(x, y, dx, dy, player);
-    }
+    // Simuler le placement de la pierre
+    const_cast<Board*>(this)->grid[x][y] = player;
     
-    return false;
+    bool result = canCreateUnstoppableFour(x, y, dx, dy, player);
+    
+    // Retirer la pierre temporaire
+    const_cast<Board*>(this)->grid[x][y] = EMPTY;
+    
+    return result;
 }
 
 bool Board::canFormUnstoppableFour(int x, int y, int dx, int dy, CellState player) const {
@@ -240,6 +301,12 @@ bool Board::canFormUnstoppableFour(int x, int y, int dx, int dy, CellState playe
                          grid[x + (end+1)*dx][y + (end+1)*dy] == EMPTY;
     
     return canExtendBefore && canExtendAfter;
+}
+
+bool Board::canCreateUnstoppableFour(int x, int y, int dx, int dy, CellState player) const {
+    std::string line = buildDirectionalLine(this, x, y, dx, dy, player);
+    const int centerIdx = 5; // k = 0 maps to index 5 in [-5..5]
+    return matchesOpenThree(line, centerIdx);
 }
 
 // Helper methods
