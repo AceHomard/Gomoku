@@ -50,56 +50,74 @@ MinMaxAI::~MinMaxAI() {
 }
 
 Position MinMaxAI::makeMove(const Board& board) {
-    // Reset performance counters
-    nodesEvaluated = 0;
-    ttHits = 0;
-    ttMisses = 0;
-    principalVariation.clear();
-    startTime = std::chrono::steady_clock::now();
-    
-    std::cout << "[MinMaxAI] Thinking..." << std::endl;
-    
-    // Check for immediate win or required defense
-    std::vector<Position> winningMoves = heuristic->findWinningMoves(board, color);
-    if (!winningMoves.empty()) {
-        std::cout << "[MinMaxAI] Found immediate winning move!" << std::endl;
-        return winningMoves[0];
-    }
-    
-    std::vector<Position> defensiveMoves = heuristic->findDefensiveMoves(board, color);
-    if (!defensiveMoves.empty()) {
-        std::cout << "[MinMaxAI] Must defend!" << std::endl;
-        // Still use minimax but prioritize defensive moves
-    }
-    
-    Position bestMove;
-    if (isOpeningPhase(board)) {
-        bestMove = getOpeningMove(board);
-        if (bestMove.x != -1 && bestMove.y != -1) {
-            std::cout << "[MinMaxAI] Using opening move" << std::endl;
-            return bestMove;
+    try {
+        // Reset performance counters
+        nodesEvaluated = 0;
+        ttHits = 0;
+        ttMisses = 0;
+        principalVariation.clear();
+        startTime = std::chrono::steady_clock::now();
+        // Prevent TT from growing across moves causing OOM
+        clearTranspositionTable();
+        
+        std::cout << "[MinMaxAI] Thinking..." << std::endl;
+        
+        // Check for immediate win or required defense
+        std::vector<Position> winningMoves = heuristic->findWinningMoves(board, color);
+        std::cout << "[MinMaxAI] winningMoves size=" << winningMoves.size() << std::endl;
+        if (!winningMoves.empty()) {
+            std::cout << "[MinMaxAI] Found immediate winning move!" << std::endl;
+            return winningMoves[0];
         }
-    }
-    
-    // Use iterative deepening for better time management
-    bestMove = iterativeDeepening(board);
-    
-    double elapsedTime = getElapsedTime();
-    std::cout << "[MinMaxAI] Move selected in " << std::fixed << std::setprecision(3) 
-              << elapsedTime << "s" << std::endl;
-    
-    printSearchStatistics();
-    
-    if (bestMove.x == -1 || bestMove.y == -1) {
-        // Fallback to simple move generation
-        std::vector<Position> moves = generateBasicMoves(board);
-        if (!moves.empty()) {
-            bestMove = moves[0];
-            std::cout << "[MinMaxAI] Using fallback move" << std::endl;
+        
+        std::vector<Position> defensiveMoves = heuristic->findDefensiveMoves(board, color);
+        std::cout << "[MinMaxAI] defensiveMoves size=" << defensiveMoves.size() << std::endl;
+        if (!defensiveMoves.empty()) {
+            std::cout << "[MinMaxAI] Must defend!" << std::endl;
+            // Still use minimax but prioritize defensive moves
         }
+        
+        Position bestMove;
+        bool opening = isOpeningPhase(board);
+        std::cout << "[MinMaxAI] isOpeningPhase=" << (opening ? 1 : 0) << std::endl;
+        if (opening) {
+            bestMove = getOpeningMove(board);
+            std::cout << "[MinMaxAI] openingMove=(" << bestMove.x << "," << bestMove.y << ")" << std::endl;
+            if (bestMove.x != -1 && bestMove.y != -1) {
+                std::cout << "[MinMaxAI] Using opening move" << std::endl;
+                return bestMove;
+            }
+        }
+        
+        // Use iterative deepening for better time management
+        bestMove = iterativeDeepening(board);
+        
+        double elapsedTime = getElapsedTime();
+        std::cout << "[MinMaxAI] Move selected in " << std::fixed << std::setprecision(3) 
+                  << elapsedTime << "s" << std::endl;
+        
+        printSearchStatistics();
+        
+        if (bestMove.x == -1 || bestMove.y == -1) {
+            // Fallback to simple move generation
+            std::vector<Position> moves = generateBasicMoves(board);
+            std::cout << "[MinMaxAI] fallback candidates=" << moves.size() << std::endl;
+            if (!moves.empty()) {
+                bestMove = moves[0];
+                std::cout << "[MinMaxAI] Using fallback move" << std::endl;
+            }
+        }
+        
+        return bestMove;
+    } catch (const std::exception& e) {
+        std::cerr << "[MinMaxAI] Exception in makeMove: " << e.what() << std::endl;
+        // As last resort, try center if valid
+        int center = BOARD_SIZE / 2;
+        if (board.isValidMove(center, center)) {
+            return Position(center, center);
+        }
+        return Position(-1, -1);
     }
-    
-    return bestMove;
 }
 
 Position MinMaxAI::iterativeDeepening(const Board& board) {
@@ -364,6 +382,11 @@ bool MinMaxAI::probeTranspositionTable(uint64_t hash, int depth, int alpha, int 
 }
 
 void MinMaxAI::storeTranspositionTable(uint64_t hash, int depth, int value, int flag, const Position& bestMove) {
+    // Cap table size to avoid unbounded growth
+    static const size_t MAX_TT_SIZE = 200000; // adjustable cap
+    if (transpositionTable.size() > MAX_TT_SIZE) {
+        transpositionTable.clear();
+    }
     TTEntry& entry = transpositionTable[hash];
     
     // Replace if this is a deeper search or same depth

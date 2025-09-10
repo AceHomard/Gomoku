@@ -72,19 +72,42 @@ bool Rules::hasAlignmentWin(const Board& board, CellState player) {
                     if (count >= WIN_ALIGNMENT) {
                         // Check endgame capture rule: alignment wins only if opponent cannot break it by immediate capture
                         bool canBeBroken = false;
+                        std::cout << "[Align] Player " << (player == BLACK ? "BLACK" : "WHITE")
+                                    << " has alignment (len=" << count << ") through: ";
+                        for (const auto& p : alignmentStones) {
+                            std::cout << "(" << p.x << "," << p.y << ") ";
+                        }
+                        std::cout << "-- evaluating breakability by capture..." << std::endl;
                         
                         // Check if opponent can capture any stone in the alignment
                         // Check all possible moves for opponent
                         for (int ox = 0; ox < board.getSize() && !canBeBroken; ox++) {
                             for (int oy = 0; oy < board.getSize() && !canBeBroken; oy++) {
                                 if (board.getCell(ox, oy) == EMPTY) {
+                                    // Only consider legal opponent moves (respecting double-three, etc.)
+                                    if (!Rules::isValidMove(board, ox, oy, opponent)) {
+                                        continue;
+                                    }
                                     std::vector<Position> captures = board.checkCaptures(ox, oy, opponent);
                                     // Check if any capture would remove a stone from our alignment
                                     for (const Position& capture : captures) {
                                         for (const Position& alignStone : alignmentStones) {
                                             if (capture.x == alignStone.x && capture.y == alignStone.y) {
                                                 canBeBroken = true;
-                                                break;
+                                                std::cout << "[Breakable] Opponent can play (" << ox << "," << oy
+                                                            << ") and capture alignment stones: ";
+                                                for (const auto& c : captures) {
+                                                    // Only print those in the alignment for clarity
+                                                    bool inAlign = false;
+                                                    for (const auto& a : alignmentStones) {
+                                                        if (a.x == c.x && a.y == c.y) { inAlign = true; break; }
+                                                    }
+                                                    if (inAlign) {
+                                                        std::cout << "(" << c.x << "," << c.y << ") ";
+                                                    }
+                                                }
+                                                std::cout << std::endl;
+                                            break;
                                             }
                                         }
                                         if (canBeBroken) break;
@@ -95,7 +118,10 @@ bool Rules::hasAlignmentWin(const Board& board, CellState player) {
                         
                         // Only win if alignment cannot be broken by capture
                         if (!canBeBroken) {
+                            std::cout << "[Win] Alignment is unbreakable by immediate capture -> WIN" << std::endl;
                             return true;
+                        } else {
+                            std::cout << "[Info] Alignment can be broken by opponent capture -> not a win now" << std::endl;
                         }
                     }
                 }
@@ -106,7 +132,12 @@ bool Rules::hasAlignmentWin(const Board& board, CellState player) {
 }
 
 bool Rules::hasCaptureWin(const Board& board, CellState player) {
-    return board.getCaptureCount(player) >= WIN_CAPTURES;
+    bool win = board.getCaptureCount(player) >= WIN_CAPTURES;
+    if (win) {
+        std::cout << "[Win] Player " << (player == BLACK ? "BLACK" : "WHITE")
+                  << " wins by captures (" << board.getCaptureCount(player) << ")" << std::endl;
+    }
+    return win;
 }
 
 bool Rules::canBreakAlignment(const Board& board, int x, int y, CellState player) {

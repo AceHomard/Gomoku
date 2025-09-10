@@ -224,7 +224,15 @@ std::vector<Position> Board::checkCaptureDirection(int x, int y, int dx, int dy,
 }
 
 int Board::executeCaptures(const std::vector<Position>& captures) {
-    // Silent in core board logic: avoids flooding logs during AI simulations.
+    // Verbose logging for captures (useful during debugging/analysis) =======
+    
+    // if (!captures.empty()) {
+    //     std::cout << "[Capture] Removing " << captures.size() << " stones:";
+    //     for (const Position& p : captures) {
+    //         std::cout << " (" << p.x << "," << p.y << ")";
+    //     }
+    //     std::cout << std::endl;
+    // }
     for (const Position& pos : captures) {
         if (isValidPosition(pos.x, pos.y)) {
             grid[pos.x][pos.y] = EMPTY;

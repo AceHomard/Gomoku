@@ -174,12 +174,6 @@ void Game::handleKeyPress(sf::Keyboard::Key key) {
             startNewGame(mode);
             break;
             
-        case sf::Keyboard::Key::U:
-            if (state == PLAYING) {
-                undoLastMove();
-            }
-            break;
-            
         case sf::Keyboard::Key::Num1:
             startNewGame(HUMAN_VS_HUMAN);
             break;
@@ -283,6 +277,7 @@ void Game::updateGameState() {
     
     // Check for draw
     if (Rules::isGameDrawn(board)) {
+        std::cout << "[Draw] Board full and no wins detected" << std::endl;
         endGame(EMPTY); // Draw
     }
 }
@@ -297,24 +292,24 @@ bool Game::makeMove(int x, int y) {
 
 bool Game::processMove(Position move, Player* player) {
     if (!validateMove(move, player)) {
+        std::cout << "[Move] Rejected move by " << player->getName() << " at (" << move.x << "," << move.y << ")" << std::endl;
         return false;
     }
     
     // Place the piece
+    std::cout << "[Move] " << player->getName() << " plays (" << move.x << "," << move.y << ") as "
+              << (player->getColor() == BLACK ? "BLACK" : "WHITE") << std::endl;
     if (!board.placePiece(move.x, move.y, player->getColor())) {
+        std::cout << "[Move] Board::placePiece rejected after validation (unexpected)" << std::endl;
         return false;
     }
-    
-    // Record the move
-    moveHistory.push_back(move);
     
     // Check for captures
     std::vector<Position> captures = board.checkCaptures(move.x, move.y, player->getColor());
     if (!captures.empty()) {
-        captureHistory.push_back(captures);
         executeCaptures(captures, player);
-    } else {
-        captureHistory.push_back(std::vector<Position>());
+        std::cout << "[Move] Captures executed: " << captures.size() << "; totals -> BLACK="
+                  << board.getCaptureCount(BLACK) << ", WHITE=" << board.getCaptureCount(WHITE) << std::endl;
     }
     
     // Check win condition
@@ -343,6 +338,8 @@ void Game::executeCaptures(const std::vector<Position>& captures, Player* player
 
 void Game::checkWinCondition(Player* player) {
     if (Rules::isGameWon(board, player->getColor())) {
+        std::cout << "[WinCheck] Game won for "
+                  << (player->getColor() == BLACK ? "BLACK" : "WHITE") << std::endl;
         endGame(player->getColor());
     }
 }
@@ -394,9 +391,7 @@ void Game::startNewGame(GameMode gameMode) {
 
 void Game::reset() {
     board.clear();
-    moveHistory.clear();
-    captureHistory.clear();
-    
+
     if (player1) player1->setCaptureCount(0);
     if (player2) player2->setCaptureCount(0);
     
@@ -430,57 +425,24 @@ void Game::endGame(CellState winnerColor) {
     
     if (winner == EMPTY) {
         statusMessage = "Game drawn!";
+        std::cout << "[End] Draw" << std::endl;
     } else {
         std::string winnerName = getPlayerName(winner);
         
         // Determine win type
         if (Rules::hasCaptureWin(board, winner)) {
             statusMessage = winnerName + " wins by capture!";
+            std::cout << "[End] " << winnerName << " wins by capture (BLACK="
+                      << board.getCaptureCount(BLACK) << ", WHITE=" << board.getCaptureCount(WHITE) << ")" << std::endl;
         } else {
             statusMessage = winnerName + " wins by alignment!";
+            std::cout << "[End] " << winnerName << " wins by alignment" << std::endl;
         }
     }
     
     // Notify players
     if (player1) player1->onGameEnd(player1->getColor() == winner);
     if (player2) player2->onGameEnd(player2->getColor() == winner);
-}
-
-bool Game::undoLastMove() {
-    if (moveHistory.empty() || state != PLAYING) {
-        return false;
-    }
-    
-    // Remove last move
-    Position lastMove = moveHistory.back();
-    moveHistory.pop_back();
-    
-    // Restore captured pieces if any
-    if (!captureHistory.empty()) {
-        std::vector<Position> lastCaptures = captureHistory.back();
-        captureHistory.pop_back();
-        
-        // Restore captured stones
-        CellState opponentColor = board.getOpponent(board.getCell(lastMove.x, lastMove.y));
-        for (const Position& capturePos : lastCaptures) {
-            const_cast<Board&>(board).placePiece(capturePos.x, capturePos.y, opponentColor);
-        }
-        
-        // Adjust capture counts
-        if (currentPlayer) {
-            currentPlayer->setCaptureCount(currentPlayer->getCaptureCount() - lastCaptures.size());
-            board.setCaptureCount(currentPlayer->getColor(), currentPlayer->getCaptureCount());
-        }
-    }
-    
-    // Remove the piece
-    const_cast<Board&>(board).placePiece(lastMove.x, lastMove.y, EMPTY);
-    
-    // Switch back to previous player
-    switchPlayer();
-    
-    statusMessage = "Move undone - " + currentPlayer->getName() + "'s turn";
-    return true;
 }
 
 // Rendering methods
