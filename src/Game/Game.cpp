@@ -13,6 +13,7 @@
 #include "Game/Game.hpp"
 #include "AI/MinMaxAI.hpp"
 #include "UI/GameRenderer.hpp"
+#include "Game/Rules.hpp"
 #include <iostream>
 #include <sstream>
 #include <algorithm>
@@ -140,8 +141,8 @@ void Game::handleMouseClick(int mouseX, int mouseY) {
     if (boardPos.x >= 0 && boardPos.x < BOARD_SIZE && 
         boardPos.y >= 0 && boardPos.y < BOARD_SIZE) {
         
-        // Check if the move is valid
-        if (!board.isValidMove(boardPos.x, boardPos.y)) {
+        // Check if the move is valid (apply full Rules including double-three)
+        if (!Rules::isValidMove(board, boardPos.x, boardPos.y, currentPlayer->getColor())) {
             return;
         }
         

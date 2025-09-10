@@ -12,11 +12,59 @@
 
 #include "UI/GameRenderer.hpp"
 #include "Game/Game.hpp"
+#include "Game/Rules.hpp"
 #include <iostream>
 #include <sstream>
 #include <iomanip>
 #include <algorithm>
 #include <cmath>
+
+
+void GameRenderer::renderHoverPreview() {
+    if (!window || !gameRef || !boardRef) return;
+    if (gameRef->getGameState() != PLAYING) return;
+    if (!gameRef->getCurrentPlayer() || gameRef->getCurrentPlayer()->getType() != HUMAN) return;
+
+    // Get mouse position relative to the render window
+    sf::Vector2i mousePos = sf::Mouse::getPosition(*window);
+    int mx = mousePos.x;
+    int my = mousePos.y;
+
+    // Ensure cursor is on the board
+    if (!isPositionOnBoard(mx, my)) return;
+
+    // Compute board coordinates and skip if occupied
+    Position pos = getBoardPosition(mx, my);
+    if (boardRef->getCell(pos.x, pos.y) != EMPTY) return;
+
+    // Determine validity of the move
+    CellState player = gameRef->getCurrentPlayer()->getColor();
+    bool valid = Rules::isValidMove(*boardRef, pos.x, pos.y, player);
+
+    // Prepare ghost stone
+    sf::CircleShape ghost;
+    ghost.setRadius(cellSize * 0.4f);
+    ghost.setOrigin(sf::Vector2f(cellSize * 0.4f, cellSize * 0.4f));
+    ghost.setPosition(sf::Vector2f(boardOffset.x + pos.x * cellSize,
+                                   boardOffset.y + pos.y * cellSize));
+
+    if (valid) {
+        // Semi-transparent stone in player's color
+        sf::Color fill = (player == BLACK) ? currentTheme.blackStone : currentTheme.whiteStone;
+        fill.a = 120; // transparency
+        ghost.setFillColor(fill);
+        ghost.setOutlineColor((player == BLACK) ? currentTheme.blackStoneOutline : currentTheme.whiteStoneOutline);
+        ghost.setOutlineThickness(1.0f);
+    } else {
+        // Invalid move: red semi-transparent overlay
+        sf::Color invalid(220, 50, 50, 140);
+        ghost.setFillColor(invalid);
+        ghost.setOutlineColor(sf::Color(160, 30, 30, 200));
+        ghost.setOutlineThickness(2.0f);
+    }
+
+    window->draw(ghost);
+}
 
 // Helper function for SFML 3 compatibility
 static sf::Font& getDummyFont() {
@@ -362,6 +410,7 @@ void GameRenderer::render() {
     // Don't clear or display here - let the main game loop handle it
     renderBoard();
     renderStones();
+    renderHoverPreview();
     renderUI();
     renderLastMoveHighlight();
     

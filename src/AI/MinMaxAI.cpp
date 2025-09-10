@@ -11,6 +11,7 @@
 /* ************************************************************************** */
 
 #include "AI/MinMaxAI.hpp"
+#include "Game/Rules.hpp"
 #include <algorithm>
 #include <limits>
 #include <iostream>
@@ -482,7 +483,7 @@ Position MinMaxAI::getOpeningMove(const Board& board) {
             };
             
             for (const Position& move : bestMoves) {
-                if (board.isValidMove(move.x, move.y)) {
+                if (Rules::isValidMove(board, move.x, move.y, color)) {
                     return move;
                 }
             }
@@ -493,7 +494,7 @@ Position MinMaxAI::getOpeningMove(const Board& board) {
         for (int dx = -1; dx <= 1; dx++) {
             for (int dy = -1; dy <= 1; dy++) {
                 int x = center + dx, y = center + dy;
-                if (board.isValidMove(x, y)) {
+                if (Rules::isValidMove(board, x, y, color)) {
                     // Prefer diagonal moves for better patterns
                     if (abs(dx) == abs(dy) && dx != 0) {
                         return Position(x, y);
@@ -506,7 +507,7 @@ Position MinMaxAI::getOpeningMove(const Board& board) {
         for (int dx = -1; dx <= 1; dx++) {
             for (int dy = -1; dy <= 1; dy++) {
                 int x = center + dx, y = center + dy;
-                if (board.isValidMove(x, y)) {
+                if (Rules::isValidMove(board, x, y, color)) {
                     return Position(x, y);
                 }
             }

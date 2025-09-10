@@ -12,6 +12,7 @@
 
 #include "Game/Player.hpp"
 #include "AI/MinMaxAI.hpp"
+#include "Game/Rules.hpp"
 #include <iostream>
 #include <algorithm>
 #include <random>
@@ -258,10 +259,10 @@ int AIPlayer::evaluatePosition(const Board& board, CellState player) {
 std::vector<Position> AIPlayer::generateMoves(const Board& board) {
     std::vector<Position> moves;
     
-    // Generate all valid moves
+    // Generate all valid moves (filter with Rules to exclude forbidden double-threes)
     for (int x = 0; x < board.getSize(); x++) {
         for (int y = 0; y < board.getSize(); y++) {
-            if (board.isValidMove(x, y)) {
+            if (Rules::isValidMove(board, x, y, color)) {
                 moves.push_back(Position(x, y));
             }
         }
@@ -320,7 +321,7 @@ std::vector<Position> AIPlayer::generateMoves(const Board& board) {
                 for (int dy = -r; dy <= r; dy++) {
                     int x = center + dx;
                     int y = center + dy;
-                    if (board.isValidMove(x, y)) {
+                    if (Rules::isValidMove(board, x, y, color)) {
                         moves.push_back(Position(x, y));
                         if (moves.size() >= 10) return moves;
                     }

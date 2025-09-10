@@ -179,6 +179,7 @@ public:
     
     // Enhanced features
     void renderLastMoveHighlight();
+    void renderHoverPreview();
     
     // Animation system
     void addAnimation(StoneAnimation::Type type, const Position& pos, float duration = 0.5f);
