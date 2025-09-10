@@ -67,6 +67,10 @@ private:
     std::vector<Position> moveHistory;
     std::vector<std::vector<Position>> captureHistory;
     
+    // Move suggestion system
+    Position currentSuggestion;
+    bool suggestionActive;
+    
     // UI elements
     float cellSize;
     sf::Vector2f boardOffset;
@@ -106,11 +110,13 @@ public:
     GameMode getGameMode() const { return mode; }
     CellState getWinner() const { return winner; }
     
+    // Move suggestion for hotseat mode
+    void showMoveSuggestion();
+    void clearMoveSuggestion();
+    Position getAISuggestion(CellState player);
+    
     // UI and rendering (enhanced)
-    void renderBoard();
-    void renderUI();
-    void renderGameInfo();
-    void renderStatusMessage();
+
     void renderEnhancedUI(); // New enhanced rendering
     Position getMouseBoardPosition(int mouseX, int mouseY) const;
     

@@ -131,7 +131,7 @@ void StoneAnimation::draw(sf::RenderWindow& window, const sf::Vector2f& boardOff
     window.draw(animatedStone);
 }
 
-// UITheme implementations
+// Private method implementations
 UITheme UITheme::createDefaultTheme() {
     UITheme theme;
     
@@ -549,6 +549,10 @@ Position GameRenderer::getBoardPosition(int mouseX, int mouseY) const {
     boardY = std::max(0, std::min(BOARD_SIZE - 1, boardY));
 
     return Position(boardX, boardY);
+}
+
+void GameRenderer::clearHighlights() {
+    highlightedMoves.clear();
 }
 
 // Private method implementations

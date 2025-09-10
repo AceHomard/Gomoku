@@ -79,9 +79,7 @@ public:
     // Public methods for Rules class
     int countConsecutive(int x, int y, int dx, int dy, CellState player) const;
     bool hasOpenEnds(int x, int y, int dx, int dy, int count, CellState player) const;
-    
-    // Rendering removed: use GameRenderer for all drawing
-    
+       
 private:
     // Helper methods for win detection
     int countDirection(int x, int y, int dx, int dy, CellState player) const;

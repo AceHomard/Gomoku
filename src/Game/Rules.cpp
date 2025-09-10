@@ -36,6 +36,8 @@ bool Rules::isGameWon(const Board& board, CellState player) {
 
 // Win condition checks
 bool Rules::hasAlignmentWin(const Board& board, CellState player) {
+    CellState opponent = (player == BLACK) ? WHITE : BLACK;
+    
     for (int x = 0; x < board.getSize(); x++) {
         for (int y = 0; y < board.getSize(); y++) {
             if (board.getCell(x, y) == player) {
@@ -44,11 +46,15 @@ bool Rules::hasAlignmentWin(const Board& board, CellState player) {
                     int dy = DIRECTIONS[i][1];
                     
                     int count = 1;
+                    std::vector<Position> alignmentStones;
+                    alignmentStones.push_back(Position(x, y));
+                    
                     // Count forward
                     int nx = x + dx, ny = y + dy;
                     while (nx >= 0 && nx < board.getSize() && ny >= 0 && ny < board.getSize() && 
                            board.getCell(nx, ny) == player) {
                         count++;
+                        alignmentStones.push_back(Position(nx, ny));
                         nx += dx;
                         ny += dy;
                     }
@@ -59,12 +65,39 @@ bool Rules::hasAlignmentWin(const Board& board, CellState player) {
                     while (nx >= 0 && nx < board.getSize() && ny >= 0 && ny < board.getSize() && 
                            board.getCell(nx, ny) == player) {
                         count++;
+                        alignmentStones.insert(alignmentStones.begin(), Position(nx, ny));
                         nx -= dx;
                         ny -= dy;
                     }
                     
                     if (count >= WIN_ALIGNMENT) {
-                        return true;
+                        // Check endgame capture rule: alignment wins only if opponent cannot break it by immediate capture
+                        bool canBeBroken = false;
+                        
+                        // Check if opponent can capture any stone in the alignment
+                        // Check all possible moves for opponent
+                        for (int ox = 0; ox < board.getSize() && !canBeBroken; ox++) {
+                            for (int oy = 0; oy < board.getSize() && !canBeBroken; oy++) {
+                                if (board.getCell(ox, oy) == EMPTY) {
+                                    std::vector<Position> captures = board.checkCaptures(ox, oy, opponent);
+                                    // Check if any capture would remove a stone from our alignment
+                                    for (const Position& capture : captures) {
+                                        for (const Position& alignStone : alignmentStones) {
+                                            if (capture.x == alignStone.x && capture.y == alignStone.y) {
+                                                canBeBroken = true;
+                                                break;
+                                            }
+                                        }
+                                        if (canBeBroken) break;
+                                    }
+                                }
+                            }
+                        }
+                        
+                        // Only win if alignment cannot be broken by capture
+                        if (!canBeBroken) {
+                            return true;
+                        }
                     }
                 }
             }

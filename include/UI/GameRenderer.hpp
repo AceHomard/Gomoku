@@ -178,11 +178,7 @@ public:
     void renderControls();
     
     // Enhanced features
-    void renderMoveHistory();
     void renderLastMoveHighlight();
-    void renderValidMoveHints(const std::vector<Position>& hints);
-    void renderCaptureEffects();
-    void renderWinConditionHighlight();
     
     // Animation system
     void addAnimation(StoneAnimation::Type type, const Position& pos, float duration = 0.5f);
@@ -191,7 +187,6 @@ public:
     
     // Highlighting
     void highlightMove(const Position& pos, sf::Color color = sf::Color::Yellow);
-    void highlightCaptures(const std::vector<Position>& captures);
     void clearHighlights();
     
     // UI component access
@@ -225,7 +220,6 @@ private:
     void drawBoardGrid();
     void drawCoordinates();
     void drawStone(const Position& pos, CellState state);
-    void drawStoneWithAnimation(const Position& pos, CellState state, float alpha = 1.0f);
     void drawPanel(sf::RectangleShape& panel);
     
     // Text rendering
@@ -233,11 +227,6 @@ private:
     void updateStatusText();
     void updateCaptureText();
     void updateCurrentPlayerText();
-    
-    // Animation helpers
-    void processPlaceAnimation(StoneAnimation* anim);
-    void processCaptureAnimation(StoneAnimation* anim);
-    void processHighlightAnimation(StoneAnimation* anim);
     
     // Theme helpers
     void applyThemeToBoard();

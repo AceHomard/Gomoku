@@ -44,6 +44,8 @@ Game::Game()
     , gameWon(false)
     , winner(EMPTY)
     , statusMessage("Welcome to Gomoku! Press F1 for Debug Mode")
+    , currentSuggestion(-1, -1)
+    , suggestionActive(false)
     , cellSize(CELL_SIZE)
     , boardOffset(BOARD_MARGIN, BOARD_MARGIN)
 {
@@ -63,9 +65,7 @@ Game::Game()
     // Load fonts for UI components
     aiTimer->loadFont();
     debugUI->loadFont();
-    
-    std::cout << "Enhanced UI initialized with mandatory AI Timer" << std::endl;
-    
+
     calculateBoardDimensions();
     startNewGame(HUMAN_VS_HUMAN);  // Start in PLAYING state instead of MENU
 }
@@ -193,6 +193,16 @@ void Game::handleKeyPress(sf::Keyboard::Key key) {
             
         case sf::Keyboard::Key::F1:
             toggleDebugMode();
+            break;
+        case sf::Keyboard::Key::S:
+            // Show move suggestion in Human vs Human mode
+            if (mode == HUMAN_VS_HUMAN && state == PLAYING) {
+                if (suggestionActive) {
+                    clearMoveSuggestion();
+                } else {
+                    showMoveSuggestion();
+                }
+            }
             break;
             
         default:
@@ -477,37 +487,12 @@ void Game::render() {
     window.clear(sf::Color(240, 240, 240));
     
     // Use enhanced renderer if available, otherwise fallback
-    if (renderer) {
+    if (renderer)
         renderer->render();
-    } else {
-        // Fallback rendering
-        renderBoard();
-        renderUI();
-        renderStatusMessage();
-    }
-    
     // Always render enhanced UI components
     renderEnhancedUI();
     
     window.display();
-}
-
-void Game::renderBoard() {
-    // Legacy board rendering removed. Rendering is handled by GameRenderer.
-}
-
-void Game::renderUI() {
-    // Legacy UI rendering removed. Use GameRenderer for panels, info, and capture counts.
-}
-
-void Game::renderGameInfo() {
-    // Game info rendering (without font for now)
-    // This can be enhanced when font loading is implemented
-}
-
-void Game::renderStatusMessage() {
-    // Status message rendering (without font for now)
-    // This can be enhanced when font loading is implemented
 }
 
 Position Game::getMouseBoardPosition(int mouseX, int mouseY) const {
@@ -681,4 +666,47 @@ void Game::handleDebugKeyPress(sf::Keyboard::Key key) {
         default:
             break;
     }
+}
+
+// Move suggestion implementation
+void Game::showMoveSuggestion() {
+    if (!currentPlayer || mode != HUMAN_VS_HUMAN) {
+        return;
+    }
+    
+    Position suggestion = getAISuggestion(currentPlayer->getColor());
+    if (suggestion.x >= 0 && suggestion.y >= 0) {
+        currentSuggestion = suggestion;
+        suggestionActive = true;
+        
+        // Highlight the suggestion using GameRenderer
+        if (renderer) {
+            renderer->highlightMove(suggestion, sf::Color(255, 255, 0, 128)); // Semi-transparent yellow
+        }
+        
+        statusMessage = "Suggestion: " + std::to_string(suggestion.x + 1) + "," + std::to_string(suggestion.y + 1) + " (Press S to clear)";
+    }
+}
+
+void Game::clearMoveSuggestion() {
+    suggestionActive = false;
+    currentSuggestion = Position(-1, -1);
+    
+    if (renderer) {
+        renderer->clearHighlights();
+    }
+    
+    if (currentPlayer) {
+        statusMessage = currentPlayer->getName() + "'s turn";
+    }
+}
+
+Position Game::getAISuggestion(CellState player) {
+    // Create a temporary AI with shallow depth for quick suggestion
+    MinMaxAI tempAI(player, 4, 0.2f); // Depth 4, 0.2s time limit for quick response
+    
+    // Get AI suggestion
+    Position suggestion = tempAI.makeMove(board);
+    
+    return suggestion;
 }
