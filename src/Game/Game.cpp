@@ -163,15 +163,13 @@ void Game::handleKeyPress(sf::Keyboard::Key key) {
             break;
             
         case sf::Keyboard::Key::R:
-            if (state == GAME_OVER || state == PAUSED) {
+            if (state == PLAYING) {
+                pause();
+            } else if (state == GAME_OVER || state == PAUSED) {
                 reset();
             }
             break;
-            
-        case sf::Keyboard::Key::N:
-            startNewGame(mode);
-            break;
-            
+
         case sf::Keyboard::Key::Num1:
             startNewGame(HUMAN_VS_HUMAN);
             break;
@@ -427,7 +425,7 @@ void Game::reset() {
 void Game::pause() {
     if (state == PLAYING) {
         state = PAUSED;
-        statusMessage = "Paused - Press P or Space to resume";
+        statusMessage = "Paused - Press R to reset, or P/Space to resume";
     }
 }
 
