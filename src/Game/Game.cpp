@@ -104,9 +104,26 @@ void Game::calculateBoardDimensions() {
 
 void Game::run() {
     while (running && window.isOpen()) {
-        handleEvents();
-        update();
-        render();
+        try {
+            handleEvents();
+            update();
+            render();
+        } catch (const std::bad_alloc&) {
+            // Enter a degraded mode to avoid quitting unexpectedly
+            std::cerr << "[Game] bad_alloc caught - pausing game to recover" << std::endl;
+            statusMessage = "Low memory detected - game paused (press P/Space to resume)";
+            if (state == PLAYING) {
+                state = PAUSED;
+            }
+            // Continue loop to keep window responsive
+        } catch (const std::exception& e) {
+            std::cerr << "[Game] Exception recovered: " << e.what() << std::endl;
+            statusMessage = std::string("Recovered from error: ") + e.what();
+            // Keep going to avoid unexpected quit
+        } catch (...) {
+            std::cerr << "[Game] Unknown exception recovered" << std::endl;
+            statusMessage = "Recovered from unknown error";
+        }
     }
 }
 
@@ -474,15 +491,26 @@ void Game::endGame(CellState winnerColor) {
 
 // Rendering methods
 void Game::render() {
-    window.clear(sf::Color(240, 240, 240));
-    
-    // Use enhanced renderer if available, otherwise fallback
-    if (renderer)
-        renderer->render();
-    // Always render enhanced UI components
-    renderEnhancedUI();
-    
-    window.display();
+    try {
+        window.clear(sf::Color(240, 240, 240));
+        
+        // Use enhanced renderer if available, otherwise fallback
+        if (renderer)
+            renderer->render();
+        // Always render enhanced UI components
+        renderEnhancedUI();
+        
+        window.display();
+    } catch (const std::exception& e) {
+        std::cerr << "[Render] Exception: " << e.what() << std::endl;
+        // Try to keep the window alive with a minimal frame
+        try {
+            window.display();
+        } catch (...) {
+            // As last resort, close window but keep process alive
+            running = false;
+        }
+    }
 }
 
 Position Game::getMouseBoardPosition(int mouseX, int mouseY) const {

@@ -16,6 +16,7 @@
 #include <limits>
 #include <iostream>
 #include <iomanip>
+#include <new>
 
 const int INFINITY_VAL = 100000;
 const int WIN_VALUE = 50000;
@@ -109,6 +110,26 @@ Position MinMaxAI::makeMove(const Board& board) {
         }
         
         return bestMove;
+    } catch (const std::bad_alloc&) {
+        // Out-of-memory safeguard: degrade gracefully
+        std::cerr << "[MinMaxAI] bad_alloc caught - entering degraded mode" << std::endl;
+        clearTranspositionTable();
+        // Reduce search depth aggressively
+        searchDepth = std::min(searchDepth, 2);
+        // Try a very cheap fallback: center or first valid move around center
+        int center = BOARD_SIZE / 2;
+        if (board.isValidMove(center, center)) {
+            return Position(center, center);
+        }
+        for (int dx = -1; dx <= 1; ++dx) {
+            for (int dy = -1; dy <= 1; ++dy) {
+                int x = center + dx, y = center + dy;
+                if (board.isValidMove(x, y)) {
+                    return Position(x, y);
+                }
+            }
+        }
+        return Position(-1, -1);
     } catch (const std::exception& e) {
         std::cerr << "[MinMaxAI] Exception in makeMove: " << e.what() << std::endl;
         // As last resort, try center if valid
@@ -386,6 +407,8 @@ void MinMaxAI::storeTranspositionTable(uint64_t hash, int depth, int value, int 
     static const size_t MAX_TT_SIZE = 200000; // adjustable cap
     if (transpositionTable.size() > MAX_TT_SIZE) {
         transpositionTable.clear();
+        // Reserve half capacity to amortize future growth and reduce rehash cost
+        transpositionTable.reserve(MAX_TT_SIZE / 2);
     }
     TTEntry& entry = transpositionTable[hash];
     
