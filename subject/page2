@@ -1,18 +1,31 @@
-•You are free to use whatever language and graphical interface library you want.
-•Your program should not crash in any circumstances (even when it runs out of
-memory), and should not quit unexpectedly.
-If it happens, your project will be considered non-functional and your grade will be
-0.
-•You have to provide a Makefile which must produce your program. It must not
-relink.
-•Your Makefile must at least contain the rules:
-$(NAME),all,clean,fcleanandre.
-Although you must keep in mind that while there will not be a grading
-scale on the time/space performance of your AI relative to others
-(We’ll see about that kind of thing later on), if your AI takes
-more than half a second (in average) to find a move, you will not
-validate the project. That’d be bad, wouldn’t it ? Also, you
-must still keep performance for its own sake in mind : You will
-not get all the points if your implementation wins too slowly, or
-if your implementation seems lazily done (Low search depth, naive
-implementation, etc...)
+Chapter III
+Mandatory part
+You must write a program that lets you play Gomoku(with the rules specified previously):
+•The executable must be named Gomoku.
+•Against your program : The most interesting case, of course. The goal here is that
+the program wins the game, without you letting it win. It must be able to adapt
+its strategy to the player’s moves.
+•Against another human player on the same computer (hotseat), but with a move-
+suggestion feature. Easy to do once you have made a whole computer player.
+The AI will, basically, generate a possible-solution tree, and choose the best move accord-
+ing to this tree. You have to use a Min-Max algorithm for this. While this is rather easy
+in itself, since these algorithms are well-documented and you pretty much only have to
+implement them, for them to actually be useful, you need an efficient heuristic function
+to evaluate the value of a terminal node in your tree. You will have to experiment and
+refine it until it is sufficiently accurate while remaining fast enough. Don’t be fooled :
+The heuristic is actually the hardest part.
+To fully validate the project, your AI must search at least 10 levels
+deep in its game tree. A lower search depth will not allow you to
+reach the maximum grade, even if the AI appears to perform well.
+You must also provide a usable graphical interface to allow one to actually play Gomoku.
+After all, while the AI is the main focus here, your game still has to be playable. You’re
+free to use whichever graphical or ncurses-like library you want for this, as long as the
+end result is at least vaguely pleasing to the eye, and is easily playable.
+Also, it would be a very good idea to implement some sort of debugging process that lets
+you examine the reasoning process of your AI while it’s running. Not only would it be
+helpful to refine your AI’s tactics, but it would help during your defense sessions, since
+you will have to actually explain how it works.
+Last point: You have to display, somewhere in your user interface:
+•A timer that counts how much time your AI takes to find its next move.
+This is so your grader can precisely evaluate the performance of your
+AI. And yes: No timer, no project validation. It’s that serious.

@@ -24,3 +24,21 @@ more, the opponent wins by capture.
 game.
 •No double-threes : It is forbidden to play a move that introduces two free-three
 alignments, which would guarantee a win by alignment (See the appendix).
+•You are free to use whatever language and graphical interface library you want.
+•Your program should not crash in any circumstances (even when it runs out of
+memory), and should not quit unexpectedly.
+If it happens, your project will be considered non-functional and your grade will be
+0.
+•You have to provide a Makefile which must produce your program. It must not
+relink.
+•Your Makefile must at least contain the rules:
+$(NAME),all,clean,fcleanandre.
+Although you must keep in mind that while there will not be a grading
+scale on the time/space performance of your AI relative to others
+(We’ll see about that kind of thing later on), if your AI takes
+more than half a second (in average) to find a move, you will not
+validate the project. That’d be bad, wouldn’t it ? Also, you
+must still keep performance for its own sake in mind : You will
+not get all the points if your implementation wins too slowly, or
+if your implementation seems lazily done (Low search depth, naive
+implementation, etc...)
