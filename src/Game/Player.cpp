@@ -77,7 +77,7 @@ AIPlayer::AIPlayer(CellState playerColor, int difficultyLevel, const std::string
     double timeLimit = 0.5; // 500ms time limit
     int aiDepth = std::max(10, searchDepth); // Minimum depth 10 as required
     
-    minMaxEngine = std::make_unique<MinMaxAI>(playerColor, aiDepth, timeLimit, playerName + " (MinMax)");
+    minMaxEngine = std::make_unique<MinMaxAI>(playerColor, aiDepth, playerName + " (MinMax)");
     
     std::cout << "[AIPlayer] Created with difficulty " << difficulty 
               << ", depth " << aiDepth << ", time limit " << timeLimit << "s" << std::endl;
@@ -126,38 +126,24 @@ int AIPlayer::getSearchDepth() const {
     return searchDepth;
 }
 
-void AIPlayer::setTimeLimit(double seconds) {
-    if (minMaxEngine) {
-        minMaxEngine->setTimeLimit(seconds);
-    }
+void AIPlayer::setTimeLimit(double /*seconds*/) {
+    // Time limit not used in basic MinMax
 }
 
 double AIPlayer::getTimeLimit() const {
-    if (minMaxEngine) {
-        return minMaxEngine->getTimeLimit();
-    }
-    return 0.5; // Default
+    return 0.5; // Default value for compatibility
 }
 
 int AIPlayer::getNodesEvaluated() const {
-    if (minMaxEngine) {
-        return minMaxEngine->getNodesEvaluated();
-    }
-    return 0;
+    return 0; // Not tracked in basic MinMax
 }
 
 int AIPlayer::getTTHitRate() const {
-    if (minMaxEngine) {
-        return minMaxEngine->getTTHitRate();
-    }
-    return 0;
+    return 0; // No transposition table in basic MinMax
 }
 
 std::vector<Position> AIPlayer::getPrincipalVariation() const {
-    if (minMaxEngine) {
-        return minMaxEngine->getPrincipalVariation();
-    }
-    return std::vector<Position>();
+    return std::vector<Position>(); // Not tracked in basic MinMax
 }
 
 Position AIPlayer::findBestMove(const Board& board) {

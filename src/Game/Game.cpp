@@ -721,7 +721,7 @@ void Game::clearMoveSuggestion() {
 
 Position Game::getAISuggestion(CellState player) {
     // Create a temporary AI with shallow depth for quick suggestion
-    MinMaxAI tempAI(player, 4, 0.2f); // Depth 4, 0.2s time limit for quick response
+    MinMaxAI tempAI(player, 4); // Depth 4 for quick response
     
     // Get AI suggestion
     Position suggestion = tempAI.makeMove(board);
