@@ -18,7 +18,6 @@
 #include "Player.hpp"
 #include "Rules.hpp"
 #include "../UI/Timer.hpp"
-#include "../UI/DebugUI.hpp"
 #include "../UI/GameRenderer.hpp"
 #include <memory>
 #include <vector>
@@ -45,7 +44,6 @@ private:
     
     // Enhanced UI components (MANDATORY TIMER)
     std::unique_ptr<AITimer> aiTimer;
-    std::unique_ptr<DebugUI> debugUI;
     std::unique_ptr<GameRenderer> renderer;
     bool debugMode;
     
@@ -120,15 +118,10 @@ public:
     void stopAITimer();
     void updateAITimer();
     
-    // Debug UI control
-    void toggleDebugMode();
-    void updateDebugInfo();
-    
     // Event handling (enhanced)
     void handleMouseClick(int x, int y);
     void handleKeyPress(sf::Keyboard::Key key);
     void handleWindowEvents(const sf::Event& event);
-    void handleDebugKeyPress(sf::Keyboard::Key key);
     
 private:
     // Initialization

@@ -32,7 +32,6 @@ Game::Game()
         sf::Style::Titlebar | sf::Style::Close
     )
     , aiTimer(std::make_unique<AITimer>("AI Player"))
-    , debugUI(std::make_unique<DebugUI>())
     , renderer(std::make_unique<GameRenderer>())
     , debugMode(false)
     , board(BOARD_SIZE)
@@ -65,7 +64,6 @@ Game::Game()
     
     // Load fonts for UI components
     aiTimer->loadFont();
-    debugUI->loadFont();
 
     calculateBoardDimensions();
     startNewGame(HUMAN_VS_HUMAN);  // Start in PLAYING state instead of MENU
@@ -217,9 +215,6 @@ void Game::handleKeyPress(sf::Keyboard::Key key) {
             startNewGame(AI_VS_AI);
             break;
             
-        case sf::Keyboard::Key::F1:
-            toggleDebugMode();
-            break;
         case sf::Keyboard::Key::P:
         case sf::Keyboard::Key::Space:
             if (state == PLAYING) {
@@ -236,7 +231,6 @@ void Game::handleKeyPress(sf::Keyboard::Key key) {
             break;
             
         default:
-            handleDebugKeyPress(key);
             break;
     }
 }
@@ -244,9 +238,6 @@ void Game::handleKeyPress(sf::Keyboard::Key key) {
 void Game::update() {
     // Update AI timer continuously (MANDATORY display requirement)
     updateAITimer();
-    
-    // Update debug information
-    updateDebugInfo();
     
     if (state != PLAYING || !currentPlayer) {
         return;
@@ -578,31 +569,12 @@ std::string Game::getPlayerName(CellState player) const {
 void Game::startAITimer() {
     if (aiTimer) {
         aiTimer->startMoveTimer();
-        
-        // Update debug UI if AI is thinking
-        if (debugUI && currentPlayer && currentPlayer->getType() == AI) {
-            debugUI->setSearchStatus("AI searching for best move...", true);
-        }
     }
 }
 
 void Game::stopAITimer() {
     if (aiTimer) {
         aiTimer->stopMoveTimer();
-        
-        // Update performance metrics for debug
-        if (debugUI && currentPlayer && currentPlayer->getType() == AI) {
-            AIPlayer* aiPlayer = dynamic_cast<AIPlayer*>(currentPlayer);
-            if (aiPlayer) {
-                aiTimer->setNodesEvaluated(aiPlayer->getNodesEvaluated());
-                debugUI->setPerformanceMetrics(
-                    aiPlayer->getNodesEvaluated(),
-                    aiPlayer->getTTHitRate(),
-                    aiTimer->getCurrentMoveTime()
-                );
-            }
-            debugUI->setSearchStatus("Search completed", false);
-        }
         
         std::cout << "AI move completed in " << aiTimer->getFormattedCurrentTime() << std::endl;
     }
@@ -611,43 +583,6 @@ void Game::stopAITimer() {
 void Game::updateAITimer() {
     if (aiTimer) {
         aiTimer->update();
-    }
-}
-
-void Game::toggleDebugMode() {
-    debugMode = !debugMode;
-    if (debugUI) {
-        if (debugMode) {
-            debugUI->show();
-            statusMessage = "Debug mode enabled - F1 to toggle";
-        } else {
-            debugUI->hide();
-            statusMessage = "Debug mode disabled";
-        }
-    }
-    std::cout << "Debug mode " << (debugMode ? "enabled" : "disabled") << std::endl;
-}
-
-void Game::updateDebugInfo() {
-    if (debugUI && debugMode && currentPlayer && currentPlayer->getType() == AI) {
-        AIPlayer* aiPlayer = dynamic_cast<AIPlayer*>(currentPlayer);
-        if (aiPlayer) {
-            // Create debug info structure
-            DebugInfo info;
-            info.searchDepth = aiPlayer->getSearchDepth();
-            info.nodesEvaluated = aiPlayer->getNodesEvaluated();
-            info.ttHitRate = aiPlayer->getTTHitRate();
-            info.principalVariation = aiPlayer->getPrincipalVariation();
-            info.isSearching = aiTimer->isTimerRunning();
-            
-            if (info.isSearching) {
-                info.searchStatus = "Searching at depth " + std::to_string(info.searchDepth);
-            } else {
-                info.searchStatus = "Ready";
-            }
-            
-            debugUI->updateDebugInfo(info);
-        }
     }
 }
 
@@ -661,50 +596,6 @@ void Game::renderEnhancedUI() {
         aiTimer->drawAIStatus(window, timerX, timerY, 240, 100);
     }
     
-    // Render debug UI if enabled
-    if (debugUI && debugMode) {
-        debugUI->draw(window);
-        
-        // Render debug overlay on board
-        if (renderer) {
-            debugUI->drawOverlay(window, boardOffset, cellSize);
-        }
-    }
-}
-
-void Game::handleDebugKeyPress(sf::Keyboard::Key key) {
-    if (debugUI) {
-        debugUI->handleKeyPress(key);
-    }
-    
-    // Additional debug key handlers
-    switch (key) {
-        case sf::Keyboard::Key::F2:
-            if (debugUI) {
-                debugUI->clearLog();
-                debugUI->addLogMessage("Debug log cleared");
-            }
-            break;
-            
-        case sf::Keyboard::Key::F3:
-            if (debugUI) {
-                debugUI->clearHighlights();
-            }
-            break;
-            
-        case sf::Keyboard::Key::T:
-            if (aiTimer) {
-                std::cout << "AI Timer Stats:" << std::endl;
-                std::cout << "Current: " << aiTimer->getFormattedCurrentTime() << std::endl;
-                std::cout << "Average: " << aiTimer->getFormattedAverageTime() << std::endl;
-                std::cout << "Total: " << aiTimer->getFormattedTotalTime() << std::endl;
-                std::cout << "Moves: " << aiTimer->getMoveCount() << std::endl;
-            }
-            break;
-            
-        default:
-            break;
-    }
 }
 
 // Move suggestion implementation

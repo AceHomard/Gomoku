@@ -261,8 +261,6 @@ GameRenderer::GameRenderer()
 {
     currentTheme = UITheme::createDefaultTheme();
     
-    debugUI = std::make_unique<DebugUI>();
-    
     setupDefaultFonts();
 }
 
@@ -339,7 +337,6 @@ bool GameRenderer::loadFonts(const std::string& mainFontPath, const std::string&
         }
         
         setupTexts();
-        debugUI->loadFont();
     }
     
     return fontsLoaded;
@@ -393,9 +390,6 @@ void GameRenderer::calculateLayout(int windowWidth, int windowHeight) {
     statusPanel.setSize(sf::Vector2f(windowWidth, STATUS_HEIGHT));
     statusPanel.setPosition(sf::Vector2f(0, windowHeight - STATUS_HEIGHT));
     
-    // Update debug UI positions
-    debugUI->setPosition(windowWidth - PANEL_WIDTH + 10, 150);
-    debugUI->setSize(PANEL_WIDTH - 20, 300);
 }
 
 void GameRenderer::setBoardParameters(const sf::Vector2f& offset, float size) {
@@ -421,12 +415,6 @@ void GameRenderer::render() {
     updateAnimations();
     for (auto& animation : activeAnimations) {
         animation->draw(*window, boardOffset, cellSize);
-    }
-    
-    // Render debug overlay if visible
-    if (debugUI->isVisible()) {
-        debugUI->drawOverlay(*window, boardOffset, cellSize);
-        debugUI->draw(*window);
     }
 }
 

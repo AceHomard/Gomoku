@@ -17,7 +17,6 @@
 #include <SFML/System.hpp>
 #include "../Game/Board.hpp"
 #include "Timer.hpp"
-#include "DebugUI.hpp"
 #include <vector>
 #include <memory>
 
@@ -148,8 +147,6 @@ private:
     // Animation system
     std::vector<std::unique_ptr<StoneAnimation>> activeAnimations;
     
-    std::unique_ptr<DebugUI> debugUI;
-    
     // Highlighting system
     sf::CircleShape moveHighlight;
     
@@ -194,8 +191,6 @@ public:
     void highlightMove(const Position& pos, sf::Color color = sf::Color::Yellow);
     void clearHighlights();
     
-    // UI component access
-    DebugUI* getDebugUI() { return debugUI.get(); }
     // Hit testing for color selection buttons (returns 1 for Black, 2 for White, 0 for none)
     int hitTestColorSelection(int mouseX, int mouseY) const;
     
