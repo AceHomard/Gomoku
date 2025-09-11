@@ -149,10 +149,27 @@ void Game::handleWindowEvents(const sf::Event& event) {
 }
 
 void Game::handleMouseClick(int mouseX, int mouseY) {
+    // Handle color selection panel clicks first (always active in Human vs AI mode)
+    if (renderer && mode == HUMAN_VS_AI) {
+        int hit = renderer->hitTestColorSelection(mouseX, mouseY);
+        if (hit == 1) {
+            startNewGame(HUMAN_VS_AI, BLACK);
+            return;
+        } else if (hit == 2) {
+            startNewGame(HUMAN_VS_AI, WHITE);
+            return;
+        }
+    }
+
     if (state != PLAYING || !currentPlayer || currentPlayer->getType() != HUMAN) {
         return;
     }
     
+    // Ignore clicks outside of the board area to avoid accidental placements when clicking UI panels
+    if (renderer && !renderer->isPositionOnBoard(mouseX, mouseY)) {
+        return;
+    }
+
     Position boardPos = getMouseBoardPosition(mouseX, mouseY);
     
     if (boardPos.x >= 0 && boardPos.x < BOARD_SIZE && 
@@ -192,7 +209,8 @@ void Game::handleKeyPress(sf::Keyboard::Key key) {
             break;
             
         case sf::Keyboard::Key::Num2:
-            startNewGame(HUMAN_VS_AI);
+            // Enter Human vs AI mode with default Black for human; panel remains visible to change color
+            startNewGame(HUMAN_VS_AI, BLACK);
             break;
             
         case sf::Keyboard::Key::Num3:
@@ -213,11 +231,7 @@ void Game::handleKeyPress(sf::Keyboard::Key key) {
         case sf::Keyboard::Key::S:
             // Show move suggestion in Human vs Human mode
             if (mode == HUMAN_VS_HUMAN && state == PLAYING) {
-                if (suggestionActive) {
-                    clearMoveSuggestion();
-                } else {
-                    showMoveSuggestion();
-                }
+                showMoveSuggestion();
             }
             break;
             
@@ -374,7 +388,7 @@ void Game::switchPlayer() {
     if (currentPlayer) {
         if (mode == AI_VS_AI && player1 && player2) {
             // Ne pas écraser le message de simulation en AI vs AI
-            statusMessage = player1->getName() + std::string(" vs ") + player2->getName() + std::string(" | simulation en cours");
+            statusMessage = player1->getName() + std::string(" vs ") + player2->getName() + std::string(" | simulation in progress");
             return;
         }
         std::string colorName = (currentPlayer->getColor() == BLACK) ? "Black" : "White";
@@ -382,7 +396,7 @@ void Game::switchPlayer() {
     }
 }
 
-void Game::setupPlayers(GameMode gameMode) {
+void Game::setupPlayers(GameMode gameMode, CellState humanPreferredColor) {
     this->mode = gameMode;
     
     switch (gameMode) {
@@ -392,8 +406,15 @@ void Game::setupPlayers(GameMode gameMode) {
             break;
             
         case HUMAN_VS_AI:
-            player1 = std::make_unique<HumanPlayer>(BLACK, "Human");
-            player2 = std::make_unique<AIPlayer>(WHITE, 2, "AI");
+            if (humanPreferredColor == BLACK) {
+                // Human wants to be Black: keep Black as player1
+                player1 = std::make_unique<HumanPlayer>(BLACK, "Human");
+                player2 = std::make_unique<AIPlayer>(WHITE, 2, "AI");
+            } else {
+                // Human wants to be White: player1 must remain Black (AI), human is player2 as White
+                player1 = std::make_unique<AIPlayer>(BLACK, 2, "AI");
+                player2 = std::make_unique<HumanPlayer>(WHITE, "Human");
+            }
             break;
             
         case AI_VS_AI:
@@ -412,13 +433,13 @@ Player* Game::getOpponent() const {
     return player1.get();
 }
 
-void Game::startNewGame(GameMode gameMode) {
+void Game::startNewGame(GameMode gameMode, CellState humanPreferredColor) {
     reset();
-    setupPlayers(gameMode);
+    setupPlayers(gameMode, humanPreferredColor);
     state = PLAYING;
     if (mode == AI_VS_AI && player1 && player2) {
         // Message spécifique pour AI vs AI
-        statusMessage = player1->getName() + std::string(" vs ") + player2->getName() + std::string(" | simulation en cours");
+        statusMessage = player1->getName() + std::string(" vs ") + player2->getName() + std::string(" | simulation in progress");
     } else {
         // Include color in status
         std::string colorName = (currentPlayer->getColor() == BLACK) ? "Black" : "White";
@@ -452,7 +473,7 @@ void Game::resume() {
         if (currentPlayer) {
             if (mode == AI_VS_AI && player1 && player2) {
                 // Conserver le message AI vs AI
-                statusMessage = player1->getName() + std::string(" vs ") + player2->getName() + std::string(" | simulation en cours");
+                statusMessage = player1->getName() + std::string(" vs ") + player2->getName() + std::string(" | simulation in progress");
                 return;
             }
             std::string colorName = (currentPlayer->getColor() == BLACK) ? "Black" : "White";
@@ -699,23 +720,11 @@ void Game::showMoveSuggestion() {
         
         // Highlight the suggestion using GameRenderer
         if (renderer) {
+            std::cout << "Suggestion: " << suggestion.x << "," << suggestion.y << std::endl;
             renderer->highlightMove(suggestion, sf::Color(255, 255, 0, 128)); // Semi-transparent yellow
         }
         
-        statusMessage = "Suggestion: " + std::to_string(suggestion.x + 1) + "," + std::to_string(suggestion.y + 1) + " (Press S to clear)";
-    }
-}
-
-void Game::clearMoveSuggestion() {
-    suggestionActive = false;
-    currentSuggestion = Position(-1, -1);
-    
-    if (renderer) {
-        renderer->clearHighlights();
-    }
-    
-    if (currentPlayer) {
-        statusMessage = currentPlayer->getName() + "'s turn";
+        statusMessage = "Suggestion: " + std::to_string(suggestion.x) + "," + std::to_string(suggestion.y);
     }
 }
 

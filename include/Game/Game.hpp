@@ -82,7 +82,7 @@ public:
     void render();
     
     // Game management
-    void startNewGame(GameMode gameMode);
+    void startNewGame(GameMode gameMode, CellState humanPreferredColor = BLACK);
     void reset();
     void pause();
     void resume();
@@ -94,7 +94,7 @@ public:
     
     // Player management
     void switchPlayer();
-    void setupPlayers(GameMode gameMode);
+    void setupPlayers(GameMode gameMode, CellState humanPreferredColor = BLACK);
     Player* getCurrentPlayer() const { return currentPlayer; }
     Player* getOpponent() const;
     
@@ -108,7 +108,6 @@ public:
     
     // Move suggestion for hotseat mode
     void showMoveSuggestion();
-    void clearMoveSuggestion();
     Position getAISuggestion(CellState player);
     
     // UI and rendering (enhanced)
