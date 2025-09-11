@@ -247,6 +247,9 @@ GameRenderer::GameRenderer()
     : fontsLoaded(false)
     , window(nullptr)
     , cellSize(30.0f)
+    , colorSelectTitle(getDummyFont(), "", 14)
+    , blackButtonLabel(getDummyFont(), "", 12)
+    , whiteButtonLabel(getDummyFont(), "", 12)
     , gameTitle(getDummyFont(), "", 18)
     , currentPlayerText(getDummyFont(), "", 16)
     , statusText(getDummyFont(), "", 14)
@@ -463,6 +466,79 @@ void GameRenderer::renderUI() {
     renderGameInfo();
     renderStatusBar();
     renderControls();
+
+    // Render color selection panel whenever in Human vs AI mode
+    if (gameRef && gameRef->getGameMode() == HUMAN_VS_AI && fontsLoaded) {
+        // Panel geometry
+        float panelWidth = 220.0f;
+        float panelHeight = 120.0f;
+        float panelX = window->getSize().x - panelWidth - 20.0f;
+        float panelY = 320.0f;
+
+        colorSelectPanel.setSize(sf::Vector2f(panelWidth, panelHeight));
+        colorSelectPanel.setPosition(sf::Vector2f(panelX, panelY));
+        colorSelectPanel.setFillColor(UIUtils::adjustAlpha(currentTheme.panelBackground, 235));
+        colorSelectPanel.setOutlineColor(currentTheme.panelBorder);
+        colorSelectPanel.setOutlineThickness(1.0f);
+        window->draw(colorSelectPanel);
+
+        // Title
+        colorSelectTitle = sf::Text(mainFont, "Choose your color", 14);
+        colorSelectTitle.setFillColor(currentTheme.primaryText);
+        colorSelectTitle.setPosition(sf::Vector2f(panelX + 12, panelY + 10));
+        window->draw(colorSelectTitle);
+
+        // Buttons
+        float btnWidth = (panelWidth - 30.0f) / 2.0f; // two buttons with spacing
+        float btnHeight = 34.0f;
+        float btnY = panelY + 60.0f;
+        float btnX1 = panelX + 10.0f;
+        float btnX2 = btnX1 + btnWidth + 10.0f;
+
+        // Mouse position for hover
+        sf::Vector2i mousePos = sf::Mouse::getPosition(*window);
+        sf::Vector2f mpos(static_cast<float>(mousePos.x), static_cast<float>(mousePos.y));
+
+        blackButtonShape.setSize(sf::Vector2f(btnWidth, btnHeight));
+        blackButtonShape.setPosition(sf::Vector2f(btnX1, btnY));
+        bool hoverBlack = sf::FloatRect(blackButtonShape.getPosition(), blackButtonShape.getSize()).contains(mpos);
+        blackButtonShape.setFillColor(hoverBlack ? sf::Color(45, 45, 45) : sf::Color(30, 30, 30));
+        blackButtonShape.setOutlineColor(currentTheme.panelBorder);
+        blackButtonShape.setOutlineThickness(hoverBlack ? 2.0f : 1.0f);
+        window->draw(blackButtonShape);
+
+        whiteButtonShape.setSize(sf::Vector2f(btnWidth, btnHeight));
+        whiteButtonShape.setPosition(sf::Vector2f(btnX2, btnY));
+        bool hoverWhite = sf::FloatRect(whiteButtonShape.getPosition(), whiteButtonShape.getSize()).contains(mpos);
+        whiteButtonShape.setFillColor(hoverWhite ? sf::Color(245, 245, 245) : sf::Color(230, 230, 230));
+        whiteButtonShape.setOutlineColor(currentTheme.panelBorder);
+        whiteButtonShape.setOutlineThickness(hoverWhite ? 2.0f : 1.0f);
+        window->draw(whiteButtonShape);
+
+        blackButtonLabel = sf::Text(mainFont, "Black", 13);
+        blackButtonLabel.setStyle(sf::Text::Bold);
+        blackButtonLabel.setFillColor(sf::Color(240, 240, 240));
+        UIUtils::setTextCentered(blackButtonLabel, btnX1 + btnWidth / 2.0f, btnY + btnHeight / 2.0f);
+        {
+            sf::Vector2f tp = blackButtonLabel.getPosition();
+            blackButtonLabel.setPosition(sf::Vector2f(std::round(tp.x), std::round(tp.y)));
+        }
+        window->draw(blackButtonLabel);
+
+        whiteButtonLabel = sf::Text(mainFont, "White", 13);
+        whiteButtonLabel.setStyle(sf::Text::Bold);
+        whiteButtonLabel.setFillColor(sf::Color(30, 30, 30));
+        UIUtils::setTextCentered(whiteButtonLabel, btnX2 + btnWidth / 2.0f, btnY + btnHeight / 2.0f);
+        {
+            sf::Vector2f tp = whiteButtonLabel.getPosition();
+            whiteButtonLabel.setPosition(sf::Vector2f(std::round(tp.x), std::round(tp.y)));
+        }
+        window->draw(whiteButtonLabel);
+
+        // Cache hit rectangles
+        blackButtonRect = sf::FloatRect(blackButtonShape.getPosition(), blackButtonShape.getSize());
+        whiteButtonRect = sf::FloatRect(whiteButtonShape.getPosition(), whiteButtonShape.getSize());
+    }
 }
 
 void GameRenderer::renderGameInfo() {
@@ -505,13 +581,55 @@ void GameRenderer::renderControls() {
     std::string controls = "Controls:\n"
                           "F1 - Toggle Debug\n"
                           "R - Restart Game\n"
-                          "1/2/3 - Game Modes\n"
+                          "1 - Human vs Human\n"
+                          "2 - Human vs AI\n"
+                          "3 - AI vs AI\n"
                           "P/Space - Pause/Resume\n"
                           "ESC - Quit";
     
     controlsHelpText.setString(controls);
     controlsHelpText.setPosition(sf::Vector2f(window->getSize().x - 240, window->getSize().y - 200));
     window->draw(controlsHelpText);
+}
+
+int GameRenderer::hitTestColorSelection(int mouseX, int mouseY) const {
+    if (!window) return 0;
+    if (!gameRef || gameRef->getGameMode() != HUMAN_VS_AI) return 0;
+    // Prefer cached rectangles set during render; if not valid, compute them
+    sf::FloatRect blackRect = blackButtonRect;
+    sf::FloatRect whiteRect = whiteButtonRect;
+
+    auto isValid = [](const sf::FloatRect& r) {
+        return r.size.x > 0.f && r.size.y > 0.f;
+    };
+
+    if (!isValid(blackRect) || !isValid(whiteRect)) {
+        float panelWidth = 220.0f;
+        // float panelHeight = 120.0f;
+        float panelX = window->getSize().x - panelWidth - 20.0f;
+        float panelY = 320.0f; // keep in sync with renderUI
+        float btnWidth = (panelWidth - 30.0f) / 2.0f;
+        float btnHeight = 34.0f;
+        float btnY = panelY + 60.0f;
+        float btnX1 = panelX + 10.0f;
+        float btnX2 = btnX1 + btnWidth + 10.0f;
+        blackRect = sf::FloatRect(sf::Vector2f(btnX1, btnY), sf::Vector2f(btnWidth, btnHeight));
+        whiteRect = sf::FloatRect(sf::Vector2f(btnX2, btnY), sf::Vector2f(btnWidth, btnHeight));
+    }
+
+    // Slightly inflate the hit areas to be more forgiving
+    auto inflate = [](sf::FloatRect r, float pad) {
+        r.position.x -= pad; r.position.y -= pad;
+        r.size.x += pad * 2.f; r.size.y += pad * 2.f;
+        return r;
+    };
+    blackRect = inflate(blackRect, 3.f);
+    whiteRect = inflate(whiteRect, 3.f);
+
+    sf::Vector2f p(static_cast<float>(mouseX), static_cast<float>(mouseY));
+    if (blackRect.contains(p)) return 1;
+    if (whiteRect.contains(p)) return 2;
+    return 0;
 }
 
 void GameRenderer::addAnimation(StoneAnimation::Type type, const Position& pos, float duration) {
@@ -564,8 +682,8 @@ void GameRenderer::highlightMove(const Position& pos, sf::Color color) {
 }
 
 bool GameRenderer::isPositionOnBoard(int mouseX, int mouseY) const {
-    sf::FloatRect boardBounds(sf::Vector2f(boardOffset.x, boardOffset.y),
-                             sf::Vector2f((BOARD_SIZE - 1) * cellSize, (BOARD_SIZE - 1) * cellSize));
+    sf::FloatRect boardBounds(sf::Vector2f(boardOffset.x - cellSize / 2, boardOffset.y - cellSize / 2),
+                             sf::Vector2f((BOARD_SIZE) * cellSize, (BOARD_SIZE) * cellSize));
     return boardBounds.contains(sf::Vector2f(static_cast<float>(mouseX), static_cast<float>(mouseY)));
 }
 

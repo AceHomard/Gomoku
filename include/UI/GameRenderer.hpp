@@ -126,6 +126,16 @@ private:
     sf::RectangleShape leftPanel;
     sf::RectangleShape rightPanel;
     sf::RectangleShape statusPanel;
+
+    // Color selection panel (for Human vs AI)
+    sf::RectangleShape colorSelectPanel;
+    sf::RectangleShape blackButtonShape;
+    sf::RectangleShape whiteButtonShape;
+    sf::Text colorSelectTitle;
+    sf::Text blackButtonLabel;
+    sf::Text whiteButtonLabel;
+    sf::FloatRect blackButtonRect; // cached for hit testing
+    sf::FloatRect whiteButtonRect; // cached for hit testing
     
     // Text objects
     sf::Text gameTitle;
@@ -189,6 +199,8 @@ public:
     
     // UI component access
     DebugUI* getDebugUI() { return debugUI.get(); }
+    // Hit testing for color selection buttons (returns 1 for Black, 2 for White, 0 for none)
+    int hitTestColorSelection(int mouseX, int mouseY) const;
     
     // Event handling support
     bool isPositionOnBoard(int mouseX, int mouseY) const;
@@ -204,8 +216,7 @@ public:
     void showGrid(bool show);
     void showCoordinates(bool show);
     void showMoveNumbers(bool show);
-    
-private:
+    private:
     // Setup methods
     void setupBoard();
     void setupUI();
