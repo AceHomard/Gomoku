@@ -76,6 +76,7 @@ Position MinMaxAI::makeMove(const Board& board) {
         if (!defensiveMoves.empty()) {
             std::cout << "[MinMaxAI] Must defend!" << std::endl;
             // Still use minimax but prioritize defensive moves
+            return defensiveMoves[0];
         }
         
         Position bestMove;
@@ -569,11 +570,11 @@ bool MinMaxAI::isOpeningPhase(const Board& board) const {
         for (int y = 0; y < board.getSize(); y++) {
             if (board.getCell(x, y) != EMPTY) {
                 moveCount++;
-                if (moveCount >= 10) return false; // Early termination
+                if (moveCount >= 2) return false; // Early termination
             }
         }
     }
-    return moveCount < 10; // Extended opening phase
+    return moveCount < 2; // Extended opening phase
 }
 
 void MinMaxAI::onGameStart() {

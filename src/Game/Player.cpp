@@ -87,12 +87,7 @@ AIPlayer::~AIPlayer() {
 }
 
 Position AIPlayer::makeMove(const Board& board) {
-    if (minMaxEngine) {
-        return minMaxEngine->makeMove(board);
-    } else {
-        // Fallback to simple AI
-        return findBestMove(board);
-    }
+    return minMaxEngine->makeMove(board);
 }
 
 void AIPlayer::onGameStart() {
