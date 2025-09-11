@@ -135,7 +135,6 @@ void Game::handleMouseClick(int mouseX, int mouseY) {
     // Handle color selection panel clicks first (always active in Human vs AI mode)
     if (renderer && mode == HUMAN_VS_AI) {
         int hit = renderer->hitTestColorSelection(mouseX, mouseY);
-        std::cout << "Color selection panel clicked: " << hit << std::endl;
         if (hit == 1) {
             startNewGame(HUMAN_VS_AI, BLACK);
             return;
@@ -215,11 +214,7 @@ void Game::handleKeyPress(sf::Keyboard::Key key) {
         case sf::Keyboard::Key::S:
             // Show move suggestion in Human vs Human mode
             if (mode == HUMAN_VS_HUMAN && state == PLAYING) {
-                if (suggestionActive) {
-                    clearMoveSuggestion();
-                } else {
-                    showMoveSuggestion();
-                }
+                showMoveSuggestion();
             }
             break;
             
@@ -697,23 +692,11 @@ void Game::showMoveSuggestion() {
         
         // Highlight the suggestion using GameRenderer
         if (renderer) {
+            std::cout << "Suggestion: " << suggestion.x << "," << suggestion.y << std::endl;
             renderer->highlightMove(suggestion, sf::Color(255, 255, 0, 128)); // Semi-transparent yellow
         }
         
-        statusMessage = "Suggestion: " + std::to_string(suggestion.x) + "," + std::to_string(suggestion.y) + " (Press S to clear)";
-    }
-}
-
-void Game::clearMoveSuggestion() {
-    suggestionActive = false;
-    currentSuggestion = Position(-1, -1);
-    
-    if (renderer) {
-        renderer->clearHighlights();
-    }
-    
-    if (currentPlayer) {
-        statusMessage = currentPlayer->getName() + "'s turn";
+        statusMessage = "Suggestion: " + std::to_string(suggestion.x) + "," + std::to_string(suggestion.y);
     }
 }
 

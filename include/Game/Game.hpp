@@ -108,7 +108,6 @@ public:
     
     // Move suggestion for hotseat mode
     void showMoveSuggestion();
-    void clearMoveSuggestion();
     Position getAISuggestion(CellState player);
     
     // UI and rendering (enhanced)

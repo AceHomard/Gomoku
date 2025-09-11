@@ -410,6 +410,10 @@ void GameRenderer::render() {
     // Don't clear or display here - let the main game loop handle it
     renderBoard();
     renderStones();
+    // Draw current move highlight (e.g., suggestion) above stones but below UI
+    if (moveHighlight.getOutlineThickness() > 0 && moveHighlight.getOutlineColor().a > 0) {
+        window->draw(moveHighlight);
+    }
     renderHoverPreview();
     renderUI();
     
@@ -665,10 +669,6 @@ void GameRenderer::updateAnimations() {
     );
 }
 
-void GameRenderer::clearAnimations() {
-    activeAnimations.clear();
-}
-
 void GameRenderer::highlightMove(const Position& pos, sf::Color color) {
     moveHighlight.setRadius(cellSize * 0.45f);
     moveHighlight.setOrigin(sf::Vector2f(cellSize * 0.45f, cellSize * 0.45f));
@@ -705,7 +705,8 @@ Position GameRenderer::getBoardPosition(int mouseX, int mouseY) const {
 }
 
 void GameRenderer::clearHighlights() {
-    highlightedMoves.clear();
+    // Hide the single-move highlight circle
+    moveHighlight.setOutlineThickness(0);
 }
 
 // Private method implementations

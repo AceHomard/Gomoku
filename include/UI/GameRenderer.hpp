@@ -151,9 +151,7 @@ private:
     std::unique_ptr<DebugUI> debugUI;
     
     // Highlighting system
-    std::vector<Position> highlightedMoves;
     sf::CircleShape moveHighlight;
-    sf::RectangleShape captureHighlight;
     
     // Game state references (non-owning)
     const Game* gameRef;
@@ -191,7 +189,6 @@ public:
     // Animation system
     void addAnimation(StoneAnimation::Type type, const Position& pos, float duration = 0.5f);
     void updateAnimations();
-    void clearAnimations();
     
     // Highlighting
     void highlightMove(const Position& pos, sf::Color color = sf::Color::Yellow);
@@ -205,7 +202,6 @@ public:
     // Event handling support
     bool isPositionOnBoard(int mouseX, int mouseY) const;
     Position getBoardPosition(int mouseX, int mouseY) const;
-    bool isPositionInPanel(int mouseX, int mouseY) const;
     
     // Theme and appearance
     void setStoneStyle(bool enableShadows, bool enable3D = false);
