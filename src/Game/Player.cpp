@@ -71,7 +71,7 @@ bool HumanPlayer::isValidMousePosition(int mouseX, int mouseY) const {
 
 // AIPlayer implementation
 AIPlayer::AIPlayer(CellState playerColor, int difficultyLevel, const std::string& playerName)
-    : Player(playerColor, AI, playerName), difficulty(difficultyLevel), searchDepth(10 + difficultyLevel * 2) {
+    : Player(playerColor, AI, playerName), difficulty(difficultyLevel), searchDepth(10) {
     
     // Create MinMaxAI engine with appropriate depth and time limit
     double timeLimit = 0.5; // 500ms time limit

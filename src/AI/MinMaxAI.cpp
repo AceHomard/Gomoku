@@ -20,7 +20,7 @@ const int WIN_VALUE = 10000;
 const int LOSE_VALUE = -10000;
 
 MinMaxAI::MinMaxAI(CellState playerColor, int depth, const std::string& playerName)
-    : Player(playerColor, AI, playerName), searchDepth(std::max(1, depth)),
+    : Player(playerColor, AI, playerName), searchDepth(depth - 7),
       heuristic(std::make_unique<Heuristic>()) {
     
     std::cout << "[MinMaxAI] Initialized with depth=" << searchDepth << std::endl;
