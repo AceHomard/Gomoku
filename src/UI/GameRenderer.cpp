@@ -78,107 +78,6 @@ static sf::Font& getDummyFont() {
     return dummyFont;
 }
 
-// StoneAnimation implementation
-StoneAnimation::StoneAnimation(Type type, const Position& pos, float dur)
-    : animationType(type)
-    , position(pos)
-    , duration(dur)
-    , active(false)
-    , originalColor(sf::Color::White)
-    , targetColor(sf::Color::Black)
-{
-    animatedStone.setRadius(10.0f);
-    animatedStone.setOrigin(sf::Vector2f(10.0f, 10.0f));
-}
-
-StoneAnimation::~StoneAnimation() {
-}
-
-void StoneAnimation::start() {
-    active = true;
-    animationClock.restart();
-}
-
-void StoneAnimation::update() {
-    if (!active) return;
-    
-    float elapsed = animationClock.getElapsedTime().asSeconds();
-    if (elapsed >= duration) {
-        active = false;
-        return;
-    }
-    
-    float progress = elapsed / duration;
-    
-    switch (animationType) {
-        case PLACE: {
-            // Scale animation for stone placement
-            float scale = UIUtils::easeOut(progress);
-            animatedStone.setScale(sf::Vector2f(scale, scale));
-            
-            // Color transition
-            sf::Color currentColor = UIUtils::blendColors(originalColor, targetColor, progress);
-            animatedStone.setFillColor(currentColor);
-            break;
-        }
-        
-        case CAPTURE: {
-            // Shrink and fade animation for captures
-            float scale = 1.0f - UIUtils::easeIn(progress);
-            animatedStone.setScale(sf::Vector2f(scale, scale));
-            
-            sf::Color fadeColor = targetColor;
-            fadeColor.a = static_cast<unsigned char>(255 * (1.0f - progress));
-            animatedStone.setFillColor(fadeColor);
-            break;
-        }
-        
-        case HIGHLIGHT: {
-            // Pulsing highlight effect
-            float alpha = 0.5f + 0.5f * std::sin(progress * 6.28f * 2.0f); // 2 cycles
-            sf::Color highlightColor = originalColor;
-            highlightColor.a = static_cast<unsigned char>(255 * alpha);
-            animatedStone.setFillColor(highlightColor);
-            break;
-        }
-        
-        case FADE_IN: {
-            sf::Color fadeColor = targetColor;
-            fadeColor.a = static_cast<unsigned char>(255 * UIUtils::easeOut(progress));
-            animatedStone.setFillColor(fadeColor);
-            break;
-        }
-        
-        case FADE_OUT: {
-            sf::Color fadeColor = originalColor;
-            fadeColor.a = static_cast<unsigned char>(255 * (1.0f - UIUtils::easeIn(progress)));
-            animatedStone.setFillColor(fadeColor);
-            break;
-        }
-    }
-}
-
-bool StoneAnimation::isComplete() const {
-    return !active;
-}
-
-void StoneAnimation::setColors(sf::Color original, sf::Color target) {
-    originalColor = original;
-    targetColor = target;
-}
-
-void StoneAnimation::draw(sf::RenderWindow& window, const sf::Vector2f& boardOffset, float cellSize) {
-    if (!active) return;
-    
-    sf::Vector2f screenPos(boardOffset.x + position.x * cellSize,
-                          boardOffset.y + position.y * cellSize);
-    
-    animatedStone.setRadius(cellSize * 0.4f);
-    animatedStone.setOrigin(sf::Vector2f(cellSize * 0.4f, cellSize * 0.4f));
-    animatedStone.setPosition(screenPos);
-    
-    window.draw(animatedStone);
-}
 
 // Private method implementations
 UITheme UITheme::createDefaultTheme() {
@@ -219,29 +118,7 @@ UITheme UITheme::createDefaultTheme() {
     return theme;
 }
 
-UITheme UITheme::createDarkTheme() {
-    UITheme theme = createDefaultTheme();
-    
-    // Dark theme adjustments
-    theme.boardBackground = sf::Color(40, 40, 40);
-    theme.gridLines = sf::Color(120, 120, 120);
-    theme.panelBackground = sf::Color(30, 30, 30);
-    theme.primaryText = sf::Color(220, 220, 220);
-    theme.secondaryText = sf::Color(160, 160, 160);
-    
-    return theme;
-}
 
-UITheme UITheme::createClassicTheme() {
-    UITheme theme = createDefaultTheme();
-    
-    // Classic go board appearance
-    theme.boardBackground = sf::Color(255, 206, 84);   // Traditional yellow
-    theme.gridLines = sf::Color(0, 0, 0);
-    theme.boardLineThickness = 1.5f;
-    
-    return theme;
-}
 
 // GameRenderer implementation
 GameRenderer::GameRenderer()
@@ -343,12 +220,6 @@ bool GameRenderer::loadFonts(const std::string& mainFontPath, const std::string&
     return fontsLoaded;
 }
 
-void GameRenderer::setTheme(const UITheme& theme) {
-    currentTheme = theme;
-    applyThemeToBoard();
-    applyThemeToUI();
-    applyThemeToText();
-}
 
 void GameRenderer::setGame(const Game* game) {
     gameRef = game;
@@ -572,7 +443,6 @@ void GameRenderer::renderControls() {
     if (!fontsLoaded) return;
     
     std::string controls = "Controls:\n"
-                          "F1 - Toggle Debug\n"
                           "R - Restart Game\n"
                           "1 - Human vs Human\n"
                           "2 - Human vs AI\n"
@@ -920,94 +790,6 @@ void GameRenderer::applyThemeToText() {
 }
 
 void GameRenderer::setupDefaultFonts() {
-    // This method would set up fallback rendering when no fonts are available
-    // For now, just mark fonts as not loaded
     fontsLoaded = false;
 }
 
-// UIUtils namespace implementation
-namespace UIUtils {
-
-sf::Color blendColors(const sf::Color& color1, const sf::Color& color2, float ratio) {
-    ratio = std::max(0.0f, std::min(1.0f, ratio));
-    
-    unsigned char r = static_cast<unsigned char>(color1.r * (1.0f - ratio) + color2.r * ratio);
-    unsigned char g = static_cast<unsigned char>(color1.g * (1.0f - ratio) + color2.g * ratio);
-    unsigned char b = static_cast<unsigned char>(color1.b * (1.0f - ratio) + color2.b * ratio);
-    unsigned char a = static_cast<unsigned char>(color1.a * (1.0f - ratio) + color2.a * ratio);
-    
-    return sf::Color(r, g, b, a);
-}
-
-sf::Color adjustBrightness(const sf::Color& color, float factor) {
-    factor = std::max(0.0f, factor);
-    
-    unsigned char r = static_cast<unsigned char>(std::min(255.0f, color.r * factor));
-    unsigned char g = static_cast<unsigned char>(std::min(255.0f, color.g * factor));
-    unsigned char b = static_cast<unsigned char>(std::min(255.0f, color.b * factor));
-    
-    return sf::Color(r, g, b, color.a);
-}
-
-sf::Color adjustAlpha(const sf::Color& color, unsigned char alpha) {
-    return sf::Color(color.r, color.g, color.b, alpha);
-}
-
-sf::Vector2f centerText(const sf::Text& text, const sf::FloatRect& bounds) {
-    sf::FloatRect textBounds = text.getLocalBounds();
-    
-    float x = bounds.position.x + (bounds.size.x - textBounds.size.x) / 2.0f;
-    float y = bounds.position.y + (bounds.size.y - textBounds.size.y) / 2.0f;
-    
-    return sf::Vector2f(x, y);
-}
-
-void setTextCentered(sf::Text& text, float x, float y) {
-    sf::FloatRect bounds = text.getLocalBounds();
-    text.setPosition(sf::Vector2f(x - bounds.size.x / 2.0f, y - bounds.size.y / 2.0f));
-}
-
-float easeInOut(float t) {
-    return t * t * (3.0f - 2.0f * t);
-}
-
-float easeIn(float t) {
-    return t * t;
-}
-
-float easeOut(float t) {
-    return 1.0f - (1.0f - t) * (1.0f - t);
-}
-
-float bounce(float t) {
-    if (t < 0.5f) {
-        return 2.0f * t * t;
-    } else {
-        return -1.0f + 4.0f * t - 2.0f * t * t;
-    }
-}
-
-bool isPointInCircle(const sf::Vector2f& point, const sf::Vector2f& center, float radius) {
-    float dx = point.x - center.x;
-    float dy = point.y - center.y;
-    return (dx * dx + dy * dy) <= (radius * radius);
-}
-
-bool isPointInRect(const sf::Vector2f& point, const sf::FloatRect& rect) {
-    return rect.contains(point);
-}
-
-sf::Vector2f rotatePoint(const sf::Vector2f& point, const sf::Vector2f& center, float angle) {
-    float cos_a = std::cos(angle);
-    float sin_a = std::sin(angle);
-    
-    float dx = point.x - center.x;
-    float dy = point.y - center.y;
-    
-    float x = center.x + dx * cos_a - dy * sin_a;
-    float y = center.y + dx * sin_a + dy * cos_a;
-    
-    return sf::Vector2f(x, y);
-}
-
-} // namespace UIUtils

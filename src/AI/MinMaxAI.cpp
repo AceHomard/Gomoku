@@ -21,8 +21,8 @@ const int LOSE_VALUE = -10000;
 
 MinMaxAI::MinMaxAI(CellState playerColor, int depth, const std::string& playerName)
     : IPlayer(playerColor, AI, playerName), searchDepth(depth),
-      heuristic(std::make_unique<Heuristic>()) {
-    
+      heuristic(std::make_unique<Heuristic>()), nodesEvaluated(0), debugMode(false) {
+
     std::cout << "[MinMaxAI] Initialized with depth=" << searchDepth << std::endl;
 }
 

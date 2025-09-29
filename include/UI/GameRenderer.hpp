@@ -17,6 +17,8 @@
 #include <SFML/System.hpp>
 #include "../Game/Board.hpp"
 #include "Timer.hpp"
+#include "StoneAnimation.hpp"
+#include "UIUtils.hpp"
 #include <vector>
 #include <memory>
 
@@ -24,42 +26,6 @@
 class Game;
 class Player;
 
-// Animation system for smooth stone placement and captures
-class StoneAnimation {
-public:
-    enum Type {
-        PLACE,      // Stone placement animation
-        CAPTURE,    // Stone capture animation
-        HIGHLIGHT,  // Move highlighting
-        FADE_IN,    // Fade in effect
-        FADE_OUT    // Fade out effect
-    };
-
-private:
-    Type animationType;
-    Position position;
-    sf::Clock animationClock;
-    float duration;
-    bool active;
-    sf::CircleShape animatedStone;
-    sf::Color originalColor;
-    sf::Color targetColor;
-    
-public:
-    StoneAnimation(Type type, const Position& pos, float dur = 0.5f);
-    ~StoneAnimation();
-    
-    void start();
-    void update();
-    bool isActive() const { return active; }
-    bool isComplete() const;
-    
-    void setColors(sf::Color original, sf::Color target);
-    void draw(sf::RenderWindow& window, const sf::Vector2f& boardOffset, float cellSize);
-    
-    Type getType() const { return animationType; }
-    Position getPosition() const { return position; }
-};
 
 // UI Theme system for consistent styling
 struct UITheme {
@@ -96,8 +62,6 @@ struct UITheme {
     float panelBorderThickness;
     
     static UITheme createDefaultTheme();
-    static UITheme createDarkTheme();
-    static UITheme createClassicTheme();
 };
 
 class GameRenderer {
@@ -161,7 +125,6 @@ public:
     // Initialization
     bool initialize(sf::RenderWindow* renderWindow);
     bool loadFonts(const std::string& mainFontPath = "", const std::string& monoFontPath = "");
-    void setTheme(const UITheme& theme);
     
     // Game state binding
     void setGame(const Game* game);
@@ -198,15 +161,6 @@ public:
     bool isPositionOnBoard(int mouseX, int mouseY) const;
     Position getBoardPosition(int mouseX, int mouseY) const;
     
-    // Theme and appearance
-    void setStoneStyle(bool enableShadows, bool enable3D = false);
-    void setGridStyle(bool enableCoordinates, bool thickBorder = true);
-    void setAnimationSpeed(float speed);
-    
-    // Debug and development
-    void showGrid(bool show);
-    void showCoordinates(bool show);
-    void showMoveNumbers(bool show);
     private:
     // Setup methods
     void setupBoard();
@@ -233,37 +187,10 @@ public:
     void applyThemeToText();
     
     // Layout calculations
-    sf::Vector2f calculateOptimalBoardSize(int windowWidth, int windowHeight);
-    sf::Vector2f calculateBoardOffset(const sf::Vector2f& boardSize, int windowWidth, int windowHeight);
-    float calculateOptimalCellSize(const sf::Vector2f& availableSize);
     
     // Font fallbacks
     void setupDefaultFonts();
-    bool loadSystemFonts();
 };
 
-// Utility functions for UI elements
-namespace UIUtils {
-    // Color utilities
-    sf::Color blendColors(const sf::Color& color1, const sf::Color& color2, float ratio);
-    sf::Color adjustBrightness(const sf::Color& color, float factor);
-    sf::Color adjustAlpha(const sf::Color& color, unsigned char alpha);
-    
-    // Text utilities
-    sf::Vector2f centerText(const sf::Text& text, const sf::FloatRect& bounds);
-    void setTextCentered(sf::Text& text, float x, float y);
-    std::string wrapText(const std::string& text, const sf::Font& font, unsigned int fontSize, float maxWidth);
-    
-    // Animation easing functions
-    float easeInOut(float t);
-    float easeIn(float t);
-    float easeOut(float t);
-    float bounce(float t);
-    
-    // Geometric helpers
-    bool isPointInCircle(const sf::Vector2f& point, const sf::Vector2f& center, float radius);
-    bool isPointInRect(const sf::Vector2f& point, const sf::FloatRect& rect);
-    sf::Vector2f rotatePoint(const sf::Vector2f& point, const sf::Vector2f& center, float angle);
-}
 
 #endif // GAMERENDERER_HPP

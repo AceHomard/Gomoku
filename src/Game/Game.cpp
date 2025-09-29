@@ -545,17 +545,7 @@ Position Game::getMouseBoardPosition(int mouseX, int mouseY) const {
     return Position(boardX, boardY);
 }
 
-sf::Vector2f Game::getBoardPosition(int x, int y) const {
-    return sf::Vector2f(boardOffset.x + x * cellSize, boardOffset.y + y * cellSize);
-}
 
-sf::Color Game::getPlayerColor(CellState player) const {
-    switch (player) {
-        case BLACK: return sf::Color::Black;
-        case WHITE: return sf::Color::White;
-        default: return sf::Color::Transparent;
-    }
-}
 
 std::string Game::getPlayerName(CellState player) const {
     if (player1 && player1->getColor() == player) {

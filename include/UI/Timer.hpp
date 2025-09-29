@@ -52,14 +52,9 @@ public:
     void startMoveTimer();
     void stopMoveTimer();
     void reset();
-    void pause();
-    void resume();
     
     // Font and display
     bool loadFont(const std::string& fontPath = "");
-    void setPosition(float x, float y);
-    void setTextColor(sf::Color color);
-    void setFontSize(unsigned int size);
     
     // Time tracking
     double getCurrentMoveTime() const;
@@ -88,31 +83,5 @@ private:
     void setupDefaultFont();
 };
 
-// AI Timer wrapper for specific AI move timing
-class AITimer : public Timer {
-private:
-    std::string aiName;
-    int searchDepth;
-    int nodesEvaluated;
-    bool showDebugInfo;
-    
-public:
-    AITimer(const std::string& name = "AI");
-    ~AITimer();
-    
-    // AI-specific methods
-    void setAIName(const std::string& name);
-    void setSearchDepth(int depth);
-    void setNodesEvaluated(int nodes);
-    void setShowDebugInfo(bool show);
-    
-    // Enhanced AI display
-    void drawAIStatus(sf::RenderWindow& window, float x, float y, float width, float height);
-    std::string getAIStatusString() const;
-    
-    // Performance metrics
-    double getNodesPerSecond() const;
-    std::string getPerformanceString() const;
-};
 
 #endif // TIMER_HPP

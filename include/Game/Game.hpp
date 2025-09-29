@@ -18,6 +18,7 @@
 #include "IPlayer.hpp"
 #include "Rules.hpp"
 #include "../UI/Timer.hpp"
+#include "../UI/AITimer.hpp"
 #include "../UI/GameRenderer.hpp"
 #include <memory>
 #include <vector>
@@ -141,11 +142,8 @@ private:
     
     // AI handling
     void handleAIMove();
-    bool waitForAIMove();
     
     // UI helpers
-    sf::Vector2f getBoardPosition(int x, int y) const;
-    sf::Color getPlayerColor(CellState player) const;
     std::string getPlayerName(CellState player) const;
     
     // Constants

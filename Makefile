@@ -20,6 +20,7 @@ INCLUDES	= -I./include -I./lib/SFML/include
 # Directories
 SRC_DIR		= src
 INCLUDE_DIR	= include
+OBJ_DIR		= obj
 LIB_DIR		= lib
 SFML_DIR	= $(LIB_DIR)/SFML
 SFML_BUILD	= $(SFML_DIR)/build
@@ -32,7 +33,7 @@ SYSTEM_LIBS	= -lGL -lX11 -lXrandr -lXi -lXcursor -lpthread -ldl -ludev -lfreetyp
 
 # Source files
 SOURCES		= $(wildcard $(SRC_DIR)/*.cpp) $(wildcard $(SRC_DIR)/**/*.cpp)
-OBJECTS		= $(SOURCES:.cpp=.o)
+OBJECTS		= $(patsubst $(SRC_DIR)/%.cpp,$(OBJ_DIR)/%.o,$(SOURCES))
 
 # SFML library files to check
 SFML_LIB_FILES = $(SFML_BUILD)/lib/libsfml-graphics.a \
@@ -57,9 +58,10 @@ $(NAME): sfml $(OBJECTS)
 	@$(CXX) $(OBJECTS) $(SFML_LIBS) $(SYSTEM_LIBS) -o $(NAME)
 	@echo "$(GREEN)✓ $(NAME) built successfully!$(RESET)"
 
-# Compile source files
-%.o: %.cpp
+# Create obj directory structure and compile source files
+$(OBJ_DIR)/%.o: $(SRC_DIR)/%.cpp
 	@echo "$(BLUE)Compiling $<...$(RESET)"
+	@mkdir -p $(dir $@)
 	@$(CXX) $(CXXFLAGS) $(INCLUDES) -c $< -o $@
 
 # SFML build target
@@ -93,7 +95,7 @@ $(SFML_DIR)/CMakeLists.txt:
 # Clean object files
 clean:
 	@echo "$(RED)Cleaning object files...$(RESET)"
-	@rm -f $(OBJECTS)
+	@rm -rf $(OBJ_DIR)
 	@echo "$(GREEN)✓ Object files cleaned!$(RESET)"
 
 # Clean everything including SFML and executable
