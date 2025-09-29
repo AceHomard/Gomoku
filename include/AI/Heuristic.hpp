@@ -16,28 +16,17 @@
 #include "../Game/Board.hpp"
 #include <vector>
 
-// Forward declaration for compatibility
-struct Threat {
-    Position position;
-    Threat(Position pos) : position(pos) {}
-};
-
 class Heuristic {
 public:
     Heuristic();
     ~Heuristic();
     
-    // Main evaluation function - returns 0 for non-terminal positions
+    // Main evaluation function - currently returns 0 for non-terminal positions
+    // This will be improved during the learning iterations
     int evaluatePosition(const Board& board, CellState player);
     
-    // Simple move generation - returns moves adjacent to existing pieces
+    // Move generation - returns moves adjacent to existing pieces
     std::vector<Position> getRelevantMoves(const Board& board);
-    
-    // Stub methods for GameTree compatibility
-    std::vector<Position> findWinningMoves(const Board& board, CellState player);
-    std::vector<Position> findDefensiveMoves(const Board& board, CellState player);
-    std::vector<Threat> findThreats(const Board& board, CellState player);
-    int evaluateMove(const Board& board, const Position& move, CellState player);
 
 private:
     // Helper to check if position has adjacent stones

@@ -12,6 +12,7 @@
 
 #include "UI/GameRenderer.hpp"
 #include "Game/Game.hpp"
+#include "Game/IPlayer.hpp"
 #include "Game/Rules.hpp"
 #include <iostream>
 #include <sstream>
@@ -882,7 +883,7 @@ void GameRenderer::updateCurrentPlayerText() {
         return;
     }
     
-    Player* current = gameRef->getCurrentPlayer();
+    IPlayer* current = gameRef->getCurrentPlayer();
     std::string playerInfo = current->getName();
     
     if (current->getType() == AI) {

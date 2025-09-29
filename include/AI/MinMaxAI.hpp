@@ -13,12 +13,12 @@
 #ifndef MINMAXAI_HPP
 #define MINMAXAI_HPP
 
-#include "../Game/Player.hpp"
+#include "../Game/IPlayer.hpp"
 #include "../Game/Board.hpp"
 #include "Heuristic.hpp"
 #include <memory>
 
-class MinMaxAI : public Player {
+class MinMaxAI : public IPlayer {
 private:
     int searchDepth;
     std::unique_ptr<Heuristic> heuristic;

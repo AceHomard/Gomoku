@@ -11,6 +11,8 @@
 /* ************************************************************************** */
 
 #include "Game/Game.hpp"
+#include "Game/HumanPlayer.hpp"
+#include "Game/AIPlayer.hpp"
 #include "AI/MinMaxAI.hpp"
 #include "UI/GameRenderer.hpp"
 #include "Game/Rules.hpp"
@@ -316,7 +318,7 @@ bool Game::makeMove(int x, int y) {
     return processMove(Position(x, y), currentPlayer);
 }
 
-bool Game::processMove(Position move, Player* player) {
+bool Game::processMove(Position move, IPlayer* player) {
     if (!validateMove(move, player)) {
         std::cout << "[Move] Rejected move by " << player->getName() << " at (" << move.x << "," << move.y << ")" << std::endl;
         return false;
@@ -348,21 +350,20 @@ bool Game::processMove(Position move, Player* player) {
     return true;
 }
 
-bool Game::validateMove(Position move, Player* player) {
+bool Game::validateMove(Position move, IPlayer* player) {
     return Rules::isValidMove(board, move.x, move.y, player->getColor());
 }
 
-void Game::executeCaptures(const std::vector<Position>& captures, Player* player) {
+void Game::executeCaptures(const std::vector<Position>& captures, IPlayer* player) {
     int captureCount = captures.size();
     player->addCapture(captureCount);
     board.setCaptureCount(player->getColor(), player->getCaptureCount());
     
-    player->onCapture(captureCount);
     
     statusMessage = player->getName() + " captured " + std::to_string(captureCount) + " stones!";
 }
 
-void Game::checkWinCondition(Player* player) {
+void Game::checkWinCondition(IPlayer* player) {
     if (Rules::isGameWon(board, player->getColor())) {
         std::cout << "[WinCheck] Game won for "
                   << (player->getColor() == BLACK ? "BLACK" : "WHITE") << std::endl;
@@ -417,7 +418,7 @@ void Game::setupPlayers(GameMode gameMode, CellState humanPreferredColor) {
     currentPlayer = player1.get();
 }
 
-Player* Game::getOpponent() const {
+IPlayer* Game::getOpponent() const {
     if (currentPlayer == player1.get()) {
         return player2.get();
     }

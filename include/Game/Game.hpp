@@ -15,12 +15,16 @@
 
 #include "../Gomoku.hpp"
 #include "Board.hpp"
-#include "Player.hpp"
+#include "IPlayer.hpp"
 #include "Rules.hpp"
 #include "../UI/Timer.hpp"
 #include "../UI/GameRenderer.hpp"
 #include <memory>
 #include <vector>
+
+// Forward declarations
+class HumanPlayer;
+class AIPlayer;
 
 enum GameMode {
     HUMAN_VS_HUMAN = 0,
@@ -49,9 +53,9 @@ private:
     
     // Game components
     Board board;
-    std::unique_ptr<Player> player1;
-    std::unique_ptr<Player> player2;
-    Player* currentPlayer;
+    std::unique_ptr<IPlayer> player1;
+    std::unique_ptr<IPlayer> player2;
+    IPlayer* currentPlayer;
     
     // Game state
     GameState state;
@@ -88,13 +92,13 @@ public:
     
     // Move processing
     bool makeMove(int x, int y);
-    bool processMove(Position move, Player* player);
+    bool processMove(Position move, IPlayer* player);
     
     // Player management
     void switchPlayer();
     void setupPlayers(GameMode gameMode, CellState humanPreferredColor = BLACK);
-    Player* getCurrentPlayer() const { return currentPlayer; }
-    Player* getOpponent() const;
+    IPlayer* getCurrentPlayer() const { return currentPlayer; }
+    IPlayer* getOpponent() const;
     
     // Game state queries
     bool isGameRunning() const { return running && state == PLAYING; }
@@ -130,9 +134,9 @@ private:
     void calculateBoardDimensions();
     
     // Game logic helpers
-    bool validateMove(Position move, Player* player);
-    void executeCaptures(const std::vector<Position>& captures, Player* player);
-    void checkWinCondition(Player* player);
+    bool validateMove(Position move, IPlayer* player);
+    void executeCaptures(const std::vector<Position>& captures, IPlayer* player);
+    void checkWinCondition(IPlayer* player);
     void updateGameState();
     
     // AI handling

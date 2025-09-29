@@ -76,28 +76,3 @@ bool Heuristic::hasAdjacentStone(const Board& board, int x, int y) {
     return false;
 }
 
-// Stub implementations for GameTree compatibility
-std::vector<Position> Heuristic::findWinningMoves(const Board& board, CellState player) {
-    (void)board;
-    (void)player;
-    return std::vector<Position>(); // Empty - no complex analysis
-}
-
-std::vector<Position> Heuristic::findDefensiveMoves(const Board& board, CellState player) {
-    (void)board;
-    (void)player;
-    return std::vector<Position>(); // Empty - no complex analysis
-}
-
-std::vector<Threat> Heuristic::findThreats(const Board& board, CellState player) {
-    (void)board;
-    (void)player;
-    return std::vector<Threat>(); // Empty - no threat analysis
-}
-
-int Heuristic::evaluateMove(const Board& board, const Position& move, CellState player) {
-    (void)board;
-    (void)move;
-    (void)player;
-    return 0; // Neutral evaluation for all moves
-}
