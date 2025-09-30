@@ -142,43 +142,107 @@ int Heuristic::getMoveScore(const Board& board, const Position& pos, CellState p
         int dx = VECTORS[d][0];
         int dy = VECTORS[d][1];
 
-        // Count MY stones (limit scan to 4 for speed)
+        // Count MY stones (limit scan to 4 for speed) + track endpoints
         int myStones = 0;
+        int lastPosX = pos.x, lastPosY = pos.y;
+        int firstPosX = pos.x, firstPosY = pos.y;
+
+        // Scan forward
         for (int i = 1; i <= 4; i++) {
             int nx = pos.x + dx * i, ny = pos.y + dy * i;
-            if (board.isValidPosition(nx, ny) && board.getCell(nx, ny) == player) myStones++;
+            if (board.isValidPosition(nx, ny) && board.getCell(nx, ny) == player) {
+                myStones++;
+                lastPosX = nx;
+                lastPosY = ny;
+            }
             else break;
         }
+        // Scan backward
         for (int i = 1; i <= 4; i++) {
             int nx = pos.x - dx * i, ny = pos.y - dy * i;
-            if (board.isValidPosition(nx, ny) && board.getCell(nx, ny) == player) myStones++;
+            if (board.isValidPosition(nx, ny) && board.getCell(nx, ny) == player) {
+                myStones++;
+                firstPosX = nx;
+                firstPosY = ny;
+            }
             else break;
         }
 
-        // Simple scoring
-        if (myStones >= 4) score += MOVE_WIN_OR_NEAR;
-        else if (myStones == 3) score += MOVE_THREAT_4;
-        else if (myStones == 2) score += MOVE_THREAT_3;
-        else if (myStones == 1) score += MOVE_THREAT_2;
+        // ULTRA-FAST: Check only IMMEDIATE neighbors (distance 1)
+        int beforeX = firstPosX - dx, beforeY = firstPosY - dy;
+        int afterX = lastPosX + dx, afterY = lastPosY + dy;
 
-        // Count OPPONENT stones (limit scan to 4 for speed)
+        bool beforeEmpty = board.isValidPosition(beforeX, beforeY) &&
+                           board.getCell(beforeX, beforeY) == EMPTY;
+        bool afterEmpty = board.isValidPosition(afterX, afterY) &&
+                          board.getCell(afterX, afterY) == EMPTY;
+
+        // Calculate base score
+        int baseScore = 0;
+        if (myStones >= 4) baseScore = MOVE_WIN_OR_NEAR;
+        else if (myStones == 3) baseScore = MOVE_THREAT_4;
+        else if (myStones == 2) baseScore = MOVE_THREAT_3;
+        else if (myStones == 1) baseScore = MOVE_THREAT_2;
+
+        // Apply simple penalty: immediate adjacency only
+        if (!beforeEmpty && !afterEmpty) {
+            baseScore = 0; // Both sides immediately blocked
+        } else if (!beforeEmpty || !afterEmpty) {
+            baseScore = baseScore / 2; // One side blocked
+        }
+
+        score += baseScore;
+
+        // Count OPPONENT stones (limit scan to 4 for speed) + track endpoints
         int oppStones = 0;
+        int oppLastPosX = pos.x, oppLastPosY = pos.y;
+        int oppFirstPosX = pos.x, oppFirstPosY = pos.y;
+
+        // Scan forward
         for (int i = 1; i <= 4; i++) {
             int nx = pos.x + dx * i, ny = pos.y + dy * i;
-            if (board.isValidPosition(nx, ny) && board.getCell(nx, ny) == opponent) oppStones++;
+            if (board.isValidPosition(nx, ny) && board.getCell(nx, ny) == opponent) {
+                oppStones++;
+                oppLastPosX = nx;
+                oppLastPosY = ny;
+            }
             else break;
         }
+        // Scan backward
         for (int i = 1; i <= 4; i++) {
             int nx = pos.x - dx * i, ny = pos.y - dy * i;
-            if (board.isValidPosition(nx, ny) && board.getCell(nx, ny) == opponent) oppStones++;
+            if (board.isValidPosition(nx, ny) && board.getCell(nx, ny) == opponent) {
+                oppStones++;
+                oppFirstPosX = nx;
+                oppFirstPosY = ny;
+            }
             else break;
         }
 
-        // Block bonus (slightly less than attack)
-        if (oppStones >= 4) score += MOVE_BLOCK_4;
-        else if (oppStones == 3) score += MOVE_BLOCK_3;
-        else if (oppStones == 2) score += MOVE_BLOCK_2;
-        else if (oppStones == 1) score += MOVE_BLOCK_1;
+        // ULTRA-FAST: Check only IMMEDIATE neighbors (distance 1) for opponent
+        int oppBeforeX = oppFirstPosX - dx, oppBeforeY = oppFirstPosY - dy;
+        int oppAfterX = oppLastPosX + dx, oppAfterY = oppLastPosY + dy;
+
+        bool oppBeforeEmpty = board.isValidPosition(oppBeforeX, oppBeforeY) &&
+                              board.getCell(oppBeforeX, oppBeforeY) == EMPTY;
+        bool oppAfterEmpty = board.isValidPosition(oppAfterX, oppAfterY) &&
+                             board.getCell(oppAfterX, oppAfterY) == EMPTY;
+
+        // Calculate block score
+        int blockScore = 0;
+        if (oppStones >= 4) blockScore = MOVE_BLOCK_4;
+        else if (oppStones == 3) blockScore = MOVE_BLOCK_3;
+        else if (oppStones == 2) blockScore = MOVE_BLOCK_2;
+        else if (oppStones == 1) blockScore = MOVE_BLOCK_1;
+
+        // Apply simple penalty: immediate adjacency only
+        if (!oppBeforeEmpty && !oppAfterEmpty) {
+            blockScore = 0; // Opponent blocked both sides - low priority
+        } else if (!oppBeforeEmpty || !oppAfterEmpty) {
+            blockScore = blockScore / 2; // One side blocked
+        }
+
+        score += blockScore;
     }
 
     // Activity bonus (fast)
