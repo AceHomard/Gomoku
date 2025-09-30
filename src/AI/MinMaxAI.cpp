@@ -53,10 +53,10 @@ Position MinMaxAI::makeMove(const Board& board) {
     }
 
     for (const Position& move : moves) {
-        // Double-check move validity before attempting
-        if (!board.isValidMove(move.x, move.y)) {
+        // Double-check move validity WITH Rules validation (includes mandatory moves check!)
+        if (!Rules::isValidMove(board, move.x, move.y, color)) {
             LOG_ERROR("Move (" << move.x << "," << move.y
-                      << ") in candidate list but board says NOT valid! Cell state: "
+                      << ") in candidate list but Rules says NOT valid! Cell state: "
                       << (int)board.getCell(move.x, move.y));
             continue;
         }
