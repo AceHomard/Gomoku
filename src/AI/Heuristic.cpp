@@ -20,12 +20,10 @@
 using namespace GameConstants;
 using namespace EvalScores;
 using namespace AIConfig;
+using namespace Directions;
 
-Heuristic::Heuristic() {
-}
-
-Heuristic::~Heuristic() {
-}
+Heuristic::Heuristic() = default;
+Heuristic::~Heuristic() = default;
 
 int Heuristic::evaluatePosition(const Board& board, CellState player) {
     // BALANCED EVALUATION - Intelligence + Speed for <0.5s at depth 10
@@ -140,11 +138,9 @@ int Heuristic::getMoveScore(const Board& board, const Position& pos, CellState p
     int score = 0;
 
     // ONLY fast operations: count stones in 4 directions
-    int directions[4][2] = {{1,0}, {0,1}, {1,1}, {1,-1}};
-
     for (int d = 0; d < 4; d++) {
-        int dx = directions[d][0];
-        int dy = directions[d][1];
+        int dx = VECTORS[d][0];
+        int dy = VECTORS[d][1];
 
         // Count MY stones (limit scan to 4 for speed)
         int myStones = 0;
@@ -216,11 +212,9 @@ int Heuristic::countAlignments(const Board& board, CellState player) {
         for (int y = 0; y < size; y++) {
             if (board.getCell(x, y) == player) {
                 // Check 4 directions: horizontal, vertical, diagonal, anti-diagonal
-                int directions[4][2] = {{1,0}, {0,1}, {1,1}, {1,-1}};
-
                 for (int d = 0; d < 4; d++) {
-                    int dx = directions[d][0];
-                    int dy = directions[d][1];
+                    int dx = VECTORS[d][0];
+                    int dy = VECTORS[d][1];
 
                     // Count forward only to avoid double counting
                     int count = 1;

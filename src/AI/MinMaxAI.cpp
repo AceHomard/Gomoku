@@ -12,14 +12,14 @@
 
 #include "AI/MinMaxAI.hpp"
 #include "Game/Rules.hpp"
+#include "Game/Constants.hpp"
 #include "Debug.hpp"
 #include <algorithm>
 #include <limits>
 #include <iostream>
 #include <chrono>
 
-const int WIN_VALUE = 10000;
-const int LOSE_VALUE = -10000;
+using namespace EvalScores;
 
 MinMaxAI::MinMaxAI(CellState playerColor, int depth, const std::string& playerName)
     : IPlayer(playerColor, AI, playerName), searchDepth(depth),
@@ -34,7 +34,7 @@ MinMaxAI::~MinMaxAI() {
 Position MinMaxAI::makeMove(const Board& board) {
     LOG_INFO("MinMaxAI thinking...");
 
-    // Réinitialiser les compteurs
+    // Reset counters
     nodesEvaluated = 0;
     cutoffsCount = 0;
     auto startTime = std::chrono::high_resolution_clock::now();
@@ -103,62 +103,6 @@ Position MinMaxAI::makeMove(const Board& board) {
               << ", Time: " << duration.count() << "ms");
 
     return bestMove;
-}
-
-int MinMaxAI::minimax(const Board& board, int depth, bool maximizing) {
-    nodesEvaluated++;
-
-    if (isTerminalNode(board, depth)) {
-        int value = evaluateBoard(board);
-        if (debugMode && depth > searchDepth - 3) {
-            LOG_DEBUG(getIndent(searchDepth - depth) << "Terminal: value=" << value);
-        }
-        return value;
-    }
-
-    std::vector<Position> moves = generateMoves(board);
-    if (moves.empty()) {
-        return evaluateBoard(board);
-    }
-
-    if (maximizing) {
-        int maxValue = std::numeric_limits<int>::min();
-        for (const Position& move : moves) {
-            Board tempBoard = board;
-            if (tempBoard.placePiece(move.x, move.y, color)) {
-                std::vector<Position> captures = tempBoard.checkCaptures(move.x, move.y, color);
-                tempBoard.executeCaptures(captures);
-
-                int value = minimax(tempBoard, depth - 1, false);
-
-                if (debugMode && depth > searchDepth - 3) {
-                    logNode(depth, move, value, maximizing);
-                }
-
-                maxValue = std::max(maxValue, value);
-            }
-        }
-        return maxValue;
-    } else {
-        int minValue = std::numeric_limits<int>::max();
-        CellState opponentColor = (color == BLACK) ? WHITE : BLACK;
-        for (const Position& move : moves) {
-            Board tempBoard = board;
-            if (tempBoard.placePiece(move.x, move.y, opponentColor)) {
-                std::vector<Position> captures = tempBoard.checkCaptures(move.x, move.y, opponentColor);
-                tempBoard.executeCaptures(captures);
-
-                int value = minimax(tempBoard, depth - 1, true);
-
-                if (debugMode && depth > searchDepth - 3) {
-                    logNode(depth, move, value, maximizing);
-                }
-
-                minValue = std::min(minValue, value);
-            }
-        }
-        return minValue;
-    }
 }
 
 std::vector<Position> MinMaxAI::generateMoves(const Board& board) {

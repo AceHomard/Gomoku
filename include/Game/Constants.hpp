@@ -32,9 +32,11 @@ namespace Directions {
 
 // AI evaluation scores
 namespace EvalScores {
-    // Terminal states
+    // Terminal states (MinMax algorithm)
     constexpr int WIN = 100000;
     constexpr int LOSS = -100000;
+    constexpr int WIN_VALUE = 10000;   // Used by MinMaxAI
+    constexpr int LOSE_VALUE = -10000; // Used by MinMaxAI
 
     // Alignment scores
     constexpr int ALIGNMENT_4 = 1000;
