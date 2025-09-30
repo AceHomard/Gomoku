@@ -27,6 +27,18 @@
 class HumanPlayer;
 class AIPlayer;
 
+// Move history record for replay system
+struct MoveRecord {
+    Position position;                  // Position of the move
+    CellState player;                   // Player who made the move (BLACK/WHITE)
+    std::vector<Position> captures;     // Captures made by this move
+    int blackCaptures;                  // Total BLACK captures after this move
+    int whiteCaptures;                  // Total WHITE captures after this move
+
+    MoveRecord(Position pos, CellState p, std::vector<Position> caps, int bc, int wc)
+        : position(pos), player(p), captures(caps), blackCaptures(bc), whiteCaptures(wc) {}
+};
+
 enum GameMode {
     HUMAN_VS_HUMAN = 0,
     HUMAN_VS_AI = 1,
@@ -69,7 +81,12 @@ private:
     // Move suggestion system
     Position currentSuggestion;
     bool suggestionActive;
-    
+
+    // Move history and replay system
+    std::vector<MoveRecord> moveHistory;   // Complete game history
+    int currentMoveIndex;                  // Current position in history (-1 = no moves)
+    bool replayMode;                       // true = navigating history, false = normal play
+
     // UI elements
     float cellSize;
     sf::Vector2f boardOffset;
@@ -112,7 +129,19 @@ public:
     // Move suggestion for hotseat mode
     void showMoveSuggestion();
     Position getAISuggestion(CellState player);
-    
+
+    // Move history and replay functions
+    void undoMove();                      // Go to previous move
+    void redoMove();                      // Go to next move
+    void goToMove(int index);            // Go to specific move
+    void exitReplayMode();               // Exit replay mode and resume game
+    void clearHistory();                 // Clear move history
+    int getCurrentMoveNumber() const { return currentMoveIndex + 1; }
+    int getTotalMoves() const { return static_cast<int>(moveHistory.size()); }
+    bool canUndo() const { return currentMoveIndex > 0; }
+    bool canRedo() const { return currentMoveIndex < static_cast<int>(moveHistory.size()) - 1; }
+    bool isInReplayMode() const { return replayMode; }
+
     // UI and rendering (enhanced)
 
     void renderEnhancedUI(); // New enhanced rendering
@@ -142,7 +171,10 @@ private:
     
     // AI handling
     void handleAIMove();
-    
+
+    // Replay system helpers
+    void reconstructBoardAtMove(int moveIndex);  // Rebuild board state at specific move
+
     // UI helpers
     std::string getPlayerName(CellState player) const;
     

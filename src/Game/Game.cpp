@@ -48,6 +48,8 @@ Game::Game()
     , statusMessage("Welcome to Gomoku!")
     , currentSuggestion(-1, -1)
     , suggestionActive(false)
+    , currentMoveIndex(-1)
+    , replayMode(false)
     , cellSize(CELL_SIZE)
     , boardOffset(BOARD_MARGIN, BOARD_MARGIN)
 {
@@ -231,7 +233,45 @@ void Game::handleKeyPress(sf::Keyboard::Key key) {
                 showMoveSuggestion();
             }
             break;
-            
+
+        // Replay controls
+        case sf::Keyboard::Key::Left:
+        case sf::Keyboard::Key::Z:
+            // Undo move / previous move
+            if (!moveHistory.empty()) {
+                undoMove();
+            }
+            break;
+
+        case sf::Keyboard::Key::Right:
+        case sf::Keyboard::Key::Y:
+            // Redo move / next move
+            if (!moveHistory.empty()) {
+                redoMove();
+            }
+            break;
+
+        case sf::Keyboard::Key::Home:
+            // Go to first move
+            if (!moveHistory.empty()) {
+                goToMove(0);
+            }
+            break;
+
+        case sf::Keyboard::Key::End:
+            // Go to last move
+            if (!moveHistory.empty()) {
+                goToMove(moveHistory.size() - 1);
+            }
+            break;
+
+        case sf::Keyboard::Key::Enter:
+            // Exit replay mode
+            if (replayMode) {
+                exitReplayMode();
+            }
+            break;
+
         default:
             break;
     }
@@ -323,7 +363,7 @@ bool Game::processMove(Position move, IPlayer* player) {
         std::cout << "[Move] Rejected move by " << player->getName() << " at (" << move.x << "," << move.y << ")" << std::endl;
         return false;
     }
-    
+
     // Place the piece
     std::cout << "[Move] " << player->getName() << " plays (" << move.x << "," << move.y << ") as "
               << (player->getColor() == BLACK ? "BLACK" : "WHITE") << std::endl;
@@ -331,7 +371,7 @@ bool Game::processMove(Position move, IPlayer* player) {
         std::cout << "[Move] Board::placePiece rejected after validation (unexpected)" << std::endl;
         return false;
     }
-    
+
     // Check for captures
     std::vector<Position> captures = board.checkCaptures(move.x, move.y, player->getColor());
     if (!captures.empty()) {
@@ -339,14 +379,28 @@ bool Game::processMove(Position move, IPlayer* player) {
         std::cout << "[Move] Captures executed: " << captures.size() << "; totals -> BLACK="
                   << board.getCaptureCount(BLACK) << ", WHITE=" << board.getCaptureCount(WHITE) << std::endl;
     }
-    
+
+    // Save move to history (only if not in replay mode)
+    if (!replayMode) {
+        // If replaying from middle and making new move, erase future history
+        if (currentMoveIndex < static_cast<int>(moveHistory.size()) - 1) {
+            moveHistory.erase(moveHistory.begin() + currentMoveIndex + 1, moveHistory.end());
+        }
+
+        // Add new move record
+        MoveRecord record(move, player->getColor(), captures,
+                         board.getCaptureCount(BLACK), board.getCaptureCount(WHITE));
+        moveHistory.push_back(record);
+        currentMoveIndex = static_cast<int>(moveHistory.size()) - 1;
+    }
+
     // Check win condition
     checkWinCondition(player);
-    
+
     if (!gameWon) {
         switchPlayer();
     }
-    
+
     return true;
 }
 
@@ -427,6 +481,7 @@ IPlayer* Game::getOpponent() const {
 
 void Game::startNewGame(GameMode gameMode, CellState humanPreferredColor) {
     reset();
+    clearHistory();  // Clear move history for new game
     setupPlayers(gameMode, humanPreferredColor);
     state = PLAYING;
     if (mode == AI_VS_AI && player1 && player2) {
@@ -613,9 +668,123 @@ void Game::showMoveSuggestion() {
 Position Game::getAISuggestion(CellState player) {
     // Create a temporary AI with shallow depth for quick suggestion
     MinMaxAI tempAI(player, 4); // Depth 4 for quick response
-    
+
     // Get AI suggestion
     Position suggestion = tempAI.makeMove(board);
-    
+
     return suggestion;
+}
+
+// ============================================================================
+// Move History and Replay System
+// ============================================================================
+
+void Game::reconstructBoardAtMove(int moveIndex) {
+    // Clear the board
+    board.clear();
+    board.setCaptureCount(BLACK, 0);
+    board.setCaptureCount(WHITE, 0);
+
+    // Replay all moves up to moveIndex
+    for (int i = 0; i <= moveIndex && i < static_cast<int>(moveHistory.size()); i++) {
+        const MoveRecord& record = moveHistory[i];
+
+        // Place the piece
+        board.placePiece(record.position.x, record.position.y, record.player);
+
+        // Execute captures
+        if (!record.captures.empty()) {
+            board.executeCaptures(record.captures);
+        }
+    }
+
+    // Restore capture counts to the state at moveIndex
+    if (moveIndex >= 0 && moveIndex < static_cast<int>(moveHistory.size())) {
+        const MoveRecord& record = moveHistory[moveIndex];
+        board.setCaptureCount(BLACK, record.blackCaptures);
+        board.setCaptureCount(WHITE, record.whiteCaptures);
+    }
+}
+
+void Game::undoMove() {
+    if (!canUndo()) {
+        std::cout << "[Replay] Cannot undo - at beginning of history" << std::endl;
+        return;
+    }
+
+    replayMode = true;
+    currentMoveIndex--;
+
+    // Reconstruct board at previous move
+    if (currentMoveIndex >= 0) {
+        reconstructBoardAtMove(currentMoveIndex);
+    } else {
+        // Back to empty board
+        board.clear();
+        board.setCaptureCount(BLACK, 0);
+        board.setCaptureCount(WHITE, 0);
+    }
+
+    statusMessage = "Replay: Move " + std::to_string(currentMoveIndex + 1) +
+                    "/" + std::to_string(moveHistory.size());
+    std::cout << "[Replay] " << statusMessage << std::endl;
+}
+
+void Game::redoMove() {
+    if (!canRedo()) {
+        std::cout << "[Replay] Cannot redo - at end of history" << std::endl;
+        return;
+    }
+
+    replayMode = true;
+    currentMoveIndex++;
+
+    // Reconstruct board at next move
+    reconstructBoardAtMove(currentMoveIndex);
+
+    statusMessage = "Replay: Move " + std::to_string(currentMoveIndex + 1) +
+                    "/" + std::to_string(moveHistory.size());
+    std::cout << "[Replay] " << statusMessage << std::endl;
+}
+
+void Game::goToMove(int index) {
+    if (index < 0 || index >= static_cast<int>(moveHistory.size())) {
+        std::cout << "[Replay] Invalid move index: " << index << std::endl;
+        return;
+    }
+
+    replayMode = true;
+    currentMoveIndex = index;
+
+    // Reconstruct board at target move
+    reconstructBoardAtMove(currentMoveIndex);
+
+    statusMessage = "Replay: Move " + std::to_string(currentMoveIndex + 1) +
+                    "/" + std::to_string(moveHistory.size());
+    std::cout << "[Replay] Jumped to " << statusMessage << std::endl;
+}
+
+void Game::exitReplayMode() {
+    if (!replayMode) {
+        std::cout << "[Replay] Not in replay mode" << std::endl;
+        return;
+    }
+
+    replayMode = false;
+
+    // Go to last move in history
+    if (!moveHistory.empty()) {
+        currentMoveIndex = static_cast<int>(moveHistory.size()) - 1;
+        reconstructBoardAtMove(currentMoveIndex);
+    }
+
+    statusMessage = "Exited replay mode - Game resumed";
+    std::cout << "[Replay] " << statusMessage << std::endl;
+}
+
+void Game::clearHistory() {
+    moveHistory.clear();
+    currentMoveIndex = -1;
+    replayMode = false;
+    std::cout << "[Replay] History cleared" << std::endl;
 }
