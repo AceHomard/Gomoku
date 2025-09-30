@@ -16,9 +16,7 @@
 #include <algorithm>
 
 using namespace GameConstants;
-
-// Constants
-const int Rules::DIRECTIONS[4][2] = {{1, 0}, {0, 1}, {1, 1}, {1, -1}};
+using namespace Directions;
 
 // Core rule validation
 bool Rules::isValidMove(const Board& board, int x, int y, CellState player) {
@@ -64,8 +62,8 @@ bool Rules::hasAlignmentWin(const Board& board, CellState player) {
         for (int y = 0; y < board.getSize(); y++) {
             if (board.getCell(x, y) == player) {
                 for (int i = 0; i < NUM_DIRECTIONS; i++) {
-                    int dx = DIRECTIONS[i][0];
-                    int dy = DIRECTIONS[i][1];
+                    int dx = VECTORS[i][0];
+                    int dy = VECTORS[i][1];
                     
                     int count = 1;
                     std::vector<Position> alignmentStones;
@@ -177,8 +175,8 @@ int Rules::countFreeThrees(const Board& board, int x, int y, CellState player) {
     int count = 0;
     // Evaluate directly on the provided board. Board::isFreeThree simulates the placement internally
     for (int i = 0; i < NUM_DIRECTIONS; i++) {
-        int dx = DIRECTIONS[i][0];
-        int dy = DIRECTIONS[i][1];
+        int dx = VECTORS[i][0];
+        int dy = VECTORS[i][1];
         if (isFreeThree(board, x, y, dx, dy, player)) {
             count++;
         }
@@ -218,8 +216,8 @@ std::vector<Position> Rules::getMandatoryDefensiveMoves(const Board& board, Cell
         for (int y = 0; y < board.getSize(); y++) {
             if (board.getCell(x, y) == opponent) {
                 for (int i = 0; i < NUM_DIRECTIONS; i++) {
-                    int dx = DIRECTIONS[i][0];
-                    int dy = DIRECTIONS[i][1];
+                    int dx = VECTORS[i][0];
+                    int dy = VECTORS[i][1];
 
                     int count = 1;
                     std::vector<Position> alignmentStones;
