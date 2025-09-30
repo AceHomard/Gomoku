@@ -21,11 +21,31 @@ bool Rules::isValidMove(const Board& board, int x, int y, CellState player) {
     if (!board.isValidMove(x, y)) {
         return false;
     }
+
+    // PRIORITY: Check for mandatory defensive moves (endgame capture rule)
+    std::vector<Position> mandatoryMoves = getMandatoryDefensiveMoves(board, player);
+    if (!mandatoryMoves.empty()) {
+        // There are mandatory moves - check if this is one of them
+        bool isMandatory = false;
+        for (const Position& mandatory : mandatoryMoves) {
+            if (mandatory.x == x && mandatory.y == y) {
+                isMandatory = true;
+                break;
+            }
+        }
+
+        if (!isMandatory) {
+            std::cout << "[Invalid] Move (" << x << "," << y << ") is NOT valid - "
+                      << "player MUST play one of the mandatory defensive captures!" << std::endl;
+            return false; // Invalid - not a mandatory move
+        }
+    }
+
     // Apply double-three rule
     if (violatesDoubleThreeRule(board, x, y, player)) {
         return false;
     }
-    
+
     return true;
 }
 
@@ -84,8 +104,12 @@ bool Rules::hasAlignmentWin(const Board& board, CellState player) {
                         for (int ox = 0; ox < board.getSize() && !canBeBroken; ox++) {
                             for (int oy = 0; oy < board.getSize() && !canBeBroken; oy++) {
                                 if (board.getCell(ox, oy) == EMPTY) {
-                                    // Only consider legal opponent moves (respecting double-three, etc.)
-                                    if (!Rules::isValidMove(board, ox, oy, opponent)) {
+                                    // Basic validation only (NO recursion via isValidMove!)
+                                    if (!board.isValidMove(ox, oy)) {
+                                        continue;
+                                    }
+                                    // Check double-three directly (avoid full isValidMove to prevent recursion)
+                                    if (violatesDoubleThreeRule(board, ox, oy, opponent)) {
                                         continue;
                                     }
                                     std::vector<Position> captures = board.checkCaptures(ox, oy, opponent);
@@ -116,12 +140,18 @@ bool Rules::hasAlignmentWin(const Board& board, CellState player) {
                             }
                         }
                         
-                        // Only win if alignment cannot be broken by capture
+                        // Determine if this is a win
                         if (!canBeBroken) {
+                            // Alignment cannot be broken - immediate win
                             std::cout << "[Win] Alignment is unbreakable by immediate capture -> WIN" << std::endl;
                             return true;
                         } else {
-                            std::cout << "[Info] Alignment can be broken by opponent capture -> not a win now" << std::endl;
+                            // Alignment CAN be broken - NOT an immediate win
+                            // The opponent will have mandatory moves to defend
+                            // If they don't play those moves, then we win next turn
+                            std::cout << "[Info] Alignment can be broken by opponent capture -> opponent has mandatory defensive moves" << std::endl;
+                            // Note: We don't return true here because it's not an immediate win
+                            // The opponent still has a chance to defend
                         }
                     }
                 }
@@ -333,22 +363,115 @@ bool Rules::hasForcedWin(const Board& board, CellState player) {
 std::vector<Position> Rules::getMandatoryMoves(const Board& board, CellState player) {
     std::vector<Position> mandatory;
     CellState opponent = (player == BLACK) ? WHITE : BLACK;
-    
+
+    // PRIORITY 1: Check for mandatory defensive moves (opponent has breakable 5+ alignment)
+    std::vector<Position> defensiveMoves = getMandatoryDefensiveMoves(board, player);
+    if (!defensiveMoves.empty()) {
+        return defensiveMoves; // MUST defend, no other choice
+    }
+
     // Find opponent's immediate threats
     std::vector<Position> opponentThreats = findThreats(board, opponent);
-    
+
     // Must defend against immediate threats
     for (const Position& threat : opponentThreats) {
         mandatory.push_back(threat);
     }
-    
+
     // If no threats, look for winning moves
     if (mandatory.empty()) {
         std::vector<Position> winningMoves = findThreats(board, player);
         mandatory.insert(mandatory.end(), winningMoves.begin(), winningMoves.end());
     }
-    
+
     return mandatory;
+}
+
+std::vector<Position> Rules::getMandatoryDefensiveMoves(const Board& board, CellState player) {
+    // Check if OPPONENT has a 5+ alignment that can be broken by capture
+    // If yes, return the mandatory capture moves (player MUST play one of these)
+
+    std::vector<Position> mandatoryMoves;
+    CellState opponent = (player == BLACK) ? WHITE : BLACK;
+
+    // Scan for opponent alignments of 5+
+    for (int x = 0; x < board.getSize(); x++) {
+        for (int y = 0; y < board.getSize(); y++) {
+            if (board.getCell(x, y) == opponent) {
+                for (int i = 0; i < NUM_DIRECTIONS; i++) {
+                    int dx = DIRECTIONS[i][0];
+                    int dy = DIRECTIONS[i][1];
+
+                    int count = 1;
+                    std::vector<Position> alignmentStones;
+                    alignmentStones.push_back(Position(x, y));
+
+                    // Count forward
+                    int nx = x + dx, ny = y + dy;
+                    while (nx >= 0 && nx < board.getSize() && ny >= 0 && ny < board.getSize() &&
+                           board.getCell(nx, ny) == opponent) {
+                        count++;
+                        alignmentStones.push_back(Position(nx, ny));
+                        nx += dx;
+                        ny += dy;
+                    }
+
+                    // Count backward
+                    nx = x - dx;
+                    ny = y - dy;
+                    while (nx >= 0 && nx < board.getSize() && ny >= 0 && ny < board.getSize() &&
+                           board.getCell(nx, ny) == opponent) {
+                        count++;
+                        alignmentStones.insert(alignmentStones.begin(), Position(nx, ny));
+                        nx -= dx;
+                        ny -= dy;
+                    }
+
+                    // Opponent has 5+ alignment
+                    if (count >= WIN_ALIGNMENT) {
+                        // Check if I (player) can break it by capturing
+                        for (int ox = 0; ox < board.getSize(); ox++) {
+                            for (int oy = 0; oy < board.getSize(); oy++) {
+                                if (board.getCell(ox, oy) == EMPTY) {
+                                    // Basic validation only (NO recursion!)
+                                    if (!board.isValidMove(ox, oy)) {
+                                        continue;
+                                    }
+                                    // Check double-three directly
+                                    if (violatesDoubleThreeRule(board, ox, oy, player)) {
+                                        continue;
+                                    }
+
+                                    std::vector<Position> captures = board.checkCaptures(ox, oy, player);
+
+                                    // Check if any capture would remove a stone from opponent's alignment
+                                    for (const Position& capture : captures) {
+                                        for (const Position& alignStone : alignmentStones) {
+                                            if (capture.x == alignStone.x && capture.y == alignStone.y) {
+                                                // This is a mandatory defensive move!
+                                                mandatoryMoves.push_back(Position(ox, oy));
+                                                break;
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        // If we found mandatory moves, return them immediately
+                        if (!mandatoryMoves.empty()) {
+                            std::cout << "[Mandatory] Player " << (player == BLACK ? "BLACK" : "WHITE")
+                                      << " MUST play one of " << mandatoryMoves.size()
+                                      << " defensive capture(s) to break opponent's alignment!" << std::endl;
+                            return mandatoryMoves;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    return mandatoryMoves; // Empty if no mandatory moves
 }
 
 // Helper methods for pattern detection

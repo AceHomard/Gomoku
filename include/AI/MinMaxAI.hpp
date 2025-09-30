@@ -23,6 +23,11 @@ private:
     int searchDepth;
     std::unique_ptr<Heuristic> heuristic;
 
+    // Debug et performance
+    mutable int nodesEvaluated;
+    mutable int cutoffsCount;
+    mutable bool debugMode;
+
 public:
     MinMaxAI(CellState playerColor, int depth = 4, 
              const std::string& playerName = "MinMax AI");
@@ -36,17 +41,33 @@ public:
     // AI-specific configuration
     void setSearchDepth(int depth) { searchDepth = std::max(1, depth); }
     int getSearchDepth() const { return searchDepth; }
+
+    // Debug et statistiques
+    void setDebugMode(bool enabled) { debugMode = enabled; }
+    int getNodesEvaluated() const { return nodesEvaluated; }
+    int getCutoffsCount() const { return cutoffsCount; }
+
+    // Setters pour tests
+    void resetCounters() { nodesEvaluated = 0; cutoffsCount = 0; }
     
-private:
+protected:
     // Core minimax algorithm
     int minimax(const Board& board, int depth, bool maximizing);
-    
+
+    // Alpha-Beta optimized algorithm
+    int alphabeta(const Board& board, int depth, int alpha, int beta, bool maximizing);
+
     // Move generation
     std::vector<Position> generateMoves(const Board& board);
-    
+
     // Terminal node evaluation
     bool isTerminalNode(const Board& board, int depth);
     int evaluateBoard(const Board& board);
+
+private:
+    // Debug helpers
+    std::string getIndent(int depth) const;
+    void logNode(int depth, const Position& move, int value, bool maximizing) const;
 };
 
 #endif // MINMAXAI_HPP

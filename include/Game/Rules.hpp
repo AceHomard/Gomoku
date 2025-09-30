@@ -56,6 +56,9 @@ public:
     static bool isGameDrawn(const Board& board);
     static bool hasForcedWin(const Board& board, CellState player);
     static std::vector<Position> getMandatoryMoves(const Board& board, CellState player);
+
+    // Endgame capture rule: mandatory defensive moves
+    static std::vector<Position> getMandatoryDefensiveMoves(const Board& board, CellState player);
     
     // Constants
     static const int WIN_ALIGNMENT = 5;
