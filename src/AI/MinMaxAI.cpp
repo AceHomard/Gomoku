@@ -12,6 +12,7 @@
 
 #include "AI/MinMaxAI.hpp"
 #include "Game/Rules.hpp"
+#include "Debug.hpp"
 #include <algorithm>
 #include <limits>
 #include <iostream>
@@ -24,14 +25,14 @@ MinMaxAI::MinMaxAI(CellState playerColor, int depth, const std::string& playerNa
     : IPlayer(playerColor, AI, playerName), searchDepth(depth),
       heuristic(std::make_unique<Heuristic>()), nodesEvaluated(0), cutoffsCount(0), debugMode(false) {
 
-    std::cout << "[MinMaxAI] Initialized with depth=" << searchDepth << std::endl;
+    LOG_INFO("MinMaxAI initialized with depth=" << searchDepth);
 }
 
 MinMaxAI::~MinMaxAI() {
 }
 
 Position MinMaxAI::makeMove(const Board& board) {
-    std::cout << "[MinMaxAI] Thinking..." << std::endl;
+    LOG_INFO("MinMaxAI thinking...");
 
     // Réinitialiser les compteurs
     nodesEvaluated = 0;
@@ -48,15 +49,15 @@ Position MinMaxAI::makeMove(const Board& board) {
     bool foundValidMove = false;
 
     if (debugMode) {
-        std::cout << "[DEBUG] Evaluating " << moves.size() << " moves at depth " << searchDepth << std::endl;
+        LOG_DEBUG("Evaluating " << moves.size() << " moves at depth " << searchDepth);
     }
 
     for (const Position& move : moves) {
         // Double-check move validity before attempting
         if (!board.isValidMove(move.x, move.y)) {
-            std::cout << "[Warning] Move (" << move.x << "," << move.y
+            LOG_ERROR("Move (" << move.x << "," << move.y
                       << ") in candidate list but board says NOT valid! Cell state: "
-                      << (int)board.getCell(move.x, move.y) << std::endl;
+                      << (int)board.getCell(move.x, move.y));
             continue;
         }
 
@@ -82,24 +83,24 @@ Position MinMaxAI::makeMove(const Board& board) {
                 bestMove = move;
             }
         } else {
-            std::cout << "[ERROR] placePiece failed for (" << move.x << "," << move.y << ")!" << std::endl;
+            LOG_ERROR("placePiece failed for (" << move.x << "," << move.y << ")!");
         }
     }
 
     // Safety check: if no valid move found, return error
     if (!foundValidMove) {
-        std::cout << "[ERROR] No valid moves found! This should never happen!" << std::endl;
+        LOG_ERROR("No valid moves found! This should never happen!");
         return Position(-1, -1);
     }
 
     auto endTime = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime);
 
-    std::cout << "[MinMaxAI] Selected move: (" << bestMove.x << ", " << bestMove.y
-              << ") value=" << bestValue << std::endl;
-    std::cout << "[Performance] Nodes evaluated: " << nodesEvaluated
+    LOG_INFO("MinMaxAI selected move: (" << bestMove.x << ", " << bestMove.y
+              << ") value=" << bestValue);
+    LOG_PERF("Nodes evaluated: " << nodesEvaluated
               << ", Cutoffs: " << cutoffsCount
-              << ", Time: " << duration.count() << "ms" << std::endl;
+              << ", Time: " << duration.count() << "ms");
 
     return bestMove;
 }
@@ -110,7 +111,7 @@ int MinMaxAI::minimax(const Board& board, int depth, bool maximizing) {
     if (isTerminalNode(board, depth)) {
         int value = evaluateBoard(board);
         if (debugMode && depth > searchDepth - 3) {
-            std::cout << getIndent(searchDepth - depth) << "Terminal: value=" << value << std::endl;
+            LOG_DEBUG(getIndent(searchDepth - depth) << "Terminal: value=" << value);
         }
         return value;
     }
@@ -192,11 +193,12 @@ int MinMaxAI::evaluateBoard(const Board& board) {
 }
 
 void MinMaxAI::onGameStart() {
-    std::cout << "[MinMaxAI] Game started, AI is ready" << std::endl;
+    LOG_INFO("MinMaxAI game started, AI is ready");
 }
 
 void MinMaxAI::onGameEnd(bool won) {
-    std::cout << "[MinMaxAI] Game ended - " << (won ? "Victory!" : "Defeat") << std::endl;
+    (void)won; // Suppress unused parameter warning
+    LOG_INFO("MinMaxAI game ended - " << (won ? "Victory!" : "Defeat"));
 }
 
 std::string MinMaxAI::getIndent(int depth) const {
@@ -204,10 +206,11 @@ std::string MinMaxAI::getIndent(int depth) const {
 }
 
 void MinMaxAI::logNode(int depth, const Position& move, int value, bool maximizing) const {
-    std::cout << getIndent(searchDepth - depth)
+    (void)depth; (void)move; (void)value; (void)maximizing; // Suppress warnings when DEBUG_MODE is off
+    LOG_DEBUG(getIndent(searchDepth - depth)
               << "Depth " << depth << ": (" << move.x << "," << move.y
               << ") " << (maximizing ? "MAX" : "MIN")
-              << " = " << value << std::endl;
+              << " = " << value);
 }
 
 int MinMaxAI::alphabeta(const Board& board, int depth, int alpha, int beta, bool maximizing) {
@@ -216,7 +219,7 @@ int MinMaxAI::alphabeta(const Board& board, int depth, int alpha, int beta, bool
     if (isTerminalNode(board, depth)) {
         int value = evaluateBoard(board);
         if (debugMode && depth > searchDepth - 3) {
-            std::cout << getIndent(searchDepth - depth) << "Terminal: value=" << value << std::endl;
+            LOG_DEBUG(getIndent(searchDepth - depth) << "Terminal: value=" << value);
         }
         return value;
     }
@@ -247,7 +250,7 @@ int MinMaxAI::alphabeta(const Board& board, int depth, int alpha, int beta, bool
                 if (beta <= alpha) {
                     cutoffsCount++;
                     if (debugMode && depth > searchDepth - 3) {
-                        std::cout << getIndent(searchDepth - depth) << "CUTOFF: beta=" << beta << " <= alpha=" << alpha << std::endl;
+                        LOG_DEBUG(getIndent(searchDepth - depth) << "CUTOFF: beta=" << beta << " <= alpha=" << alpha);
                     }
                     break;
                 }
@@ -276,7 +279,7 @@ int MinMaxAI::alphabeta(const Board& board, int depth, int alpha, int beta, bool
                 if (beta <= alpha) {
                     cutoffsCount++;
                     if (debugMode && depth > searchDepth - 3) {
-                        std::cout << getIndent(searchDepth - depth) << "CUTOFF: beta=" << beta << " <= alpha=" << alpha << std::endl;
+                        LOG_DEBUG(getIndent(searchDepth - depth) << "CUTOFF: beta=" << beta << " <= alpha=" << alpha);
                     }
                     break;
                 }

@@ -11,7 +11,11 @@
 /* ************************************************************************** */
 
 #include "Game/Rules.hpp"
+#include "Game/Constants.hpp"
+#include "Debug.hpp"
 #include <algorithm>
+
+using namespace GameConstants;
 
 // Constants
 const int Rules::DIRECTIONS[4][2] = {{1, 0}, {0, 1}, {1, 1}, {1, -1}};
@@ -35,8 +39,7 @@ bool Rules::isValidMove(const Board& board, int x, int y, CellState player) {
         }
 
         if (!isMandatory) {
-            std::cout << "[Invalid] Move (" << x << "," << y << ") is NOT valid - "
-                      << "player MUST play one of the mandatory defensive captures!" << std::endl;
+            LOG_RULE("Move (" << x << "," << y << ") rejected - player MUST play mandatory defensive capture");
             return false; // Invalid - not a mandatory move
         }
     }
@@ -92,12 +95,7 @@ bool Rules::hasAlignmentWin(const Board& board, CellState player) {
                     if (count >= WIN_ALIGNMENT) {
                         // Check endgame capture rule: alignment wins only if opponent cannot break it by immediate capture
                         bool canBeBroken = false;
-                        std::cout << "[Align] Player " << (player == BLACK ? "BLACK" : "WHITE")
-                                    << " has alignment (len=" << count << ") through: ";
-                        for (const auto& p : alignmentStones) {
-                            std::cout << "(" << p.x << "," << p.y << ") ";
-                        }
-                        std::cout << "-- evaluating breakability by capture..." << std::endl;
+                        LOG_DEBUG("Player " << (player == BLACK ? "BLACK" : "WHITE") << " has " << count << "-alignment");
                         
                         // Check if opponent can capture any stone in the alignment
                         // Check all possible moves for opponent
@@ -118,20 +116,8 @@ bool Rules::hasAlignmentWin(const Board& board, CellState player) {
                                         for (const Position& alignStone : alignmentStones) {
                                             if (capture.x == alignStone.x && capture.y == alignStone.y) {
                                                 canBeBroken = true;
-                                                std::cout << "[Breakable] Opponent can play (" << ox << "," << oy
-                                                            << ") and capture alignment stones: ";
-                                                for (const auto& c : captures) {
-                                                    // Only print those in the alignment for clarity
-                                                    bool inAlign = false;
-                                                    for (const auto& a : alignmentStones) {
-                                                        if (a.x == c.x && a.y == c.y) { inAlign = true; break; }
-                                                    }
-                                                    if (inAlign) {
-                                                        std::cout << "(" << c.x << "," << c.y << ") ";
-                                                    }
-                                                }
-                                                std::cout << std::endl;
-                                            break;
+                                                LOG_DEBUG("Alignment breakable by capture at (" << ox << "," << oy << ")");
+                                                break;
                                             }
                                         }
                                         if (canBeBroken) break;
@@ -142,16 +128,10 @@ bool Rules::hasAlignmentWin(const Board& board, CellState player) {
                         
                         // Determine if this is a win
                         if (!canBeBroken) {
-                            // Alignment cannot be broken - immediate win
-                            std::cout << "[Win] Alignment is unbreakable by immediate capture -> WIN" << std::endl;
+                            LOG_RULE("Player " << (player == BLACK ? "BLACK" : "WHITE") << " wins - unbreakable alignment");
                             return true;
                         } else {
-                            // Alignment CAN be broken - NOT an immediate win
-                            // The opponent will have mandatory moves to defend
-                            // If they don't play those moves, then we win next turn
-                            std::cout << "[Info] Alignment can be broken by opponent capture -> opponent has mandatory defensive moves" << std::endl;
-                            // Note: We don't return true here because it's not an immediate win
-                            // The opponent still has a chance to defend
+                            LOG_DEBUG("Alignment breakable - opponent has mandatory defensive moves");
                         }
                     }
                 }
@@ -164,8 +144,7 @@ bool Rules::hasAlignmentWin(const Board& board, CellState player) {
 bool Rules::hasCaptureWin(const Board& board, CellState player) {
     bool win = board.getCaptureCount(player) >= WIN_CAPTURES;
     if (win) {
-        std::cout << "[Win] Player " << (player == BLACK ? "BLACK" : "WHITE")
-                  << " wins by captures (" << board.getCaptureCount(player) << ")" << std::endl;
+        LOG_RULE("Player " << (player == BLACK ? "BLACK" : "WHITE") << " wins by capture (" << board.getCaptureCount(player) << " pairs)");
     }
     return win;
 }
@@ -460,9 +439,8 @@ std::vector<Position> Rules::getMandatoryDefensiveMoves(const Board& board, Cell
 
                         // If we found mandatory moves, return them immediately
                         if (!mandatoryMoves.empty()) {
-                            std::cout << "[Mandatory] Player " << (player == BLACK ? "BLACK" : "WHITE")
-                                      << " MUST play one of " << mandatoryMoves.size()
-                                      << " defensive capture(s) to break opponent's alignment!" << std::endl;
+                            LOG_MANDATORY("Player " << (player == BLACK ? "BLACK" : "WHITE")
+                                          << " MUST play one of " << mandatoryMoves.size() << " defensive captures");
                             return mandatoryMoves;
                         }
                     }
