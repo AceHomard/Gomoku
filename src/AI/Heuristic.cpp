@@ -144,98 +144,41 @@ int Heuristic::getMoveScore(const Board& board, const Position& pos, CellState p
 
         // Count MY stones (limit scan to 4 for speed)
         int myStones = 0;
-        int lastPosX = pos.x, lastPosY = pos.y;
-        int firstPosX = pos.x, firstPosY = pos.y;
-
         for (int i = 1; i <= 4; i++) {
             int nx = pos.x + dx * i, ny = pos.y + dy * i;
-            if (board.isValidPosition(nx, ny) && board.getCell(nx, ny) == player) {
-                myStones++;
-                lastPosX = nx;
-                lastPosY = ny;
-            }
+            if (board.isValidPosition(nx, ny) && board.getCell(nx, ny) == player) myStones++;
             else break;
         }
         for (int i = 1; i <= 4; i++) {
             int nx = pos.x - dx * i, ny = pos.y - dy * i;
-            if (board.isValidPosition(nx, ny) && board.getCell(nx, ny) == player) {
-                myStones++;
-                firstPosX = nx;
-                firstPosY = ny;
-            }
+            if (board.isValidPosition(nx, ny) && board.getCell(nx, ny) == player) myStones++;
             else break;
         }
 
-        // Check open ends (is alignment extendable?)
-        int openEnds = 0;
-        int beforeX = firstPosX - dx, beforeY = firstPosY - dy;
-        int afterX = lastPosX + dx, afterY = lastPosY + dy;
-
-        if (board.isValidPosition(beforeX, beforeY) && board.getCell(beforeX, beforeY) == EMPTY)
-            openEnds++;
-        if (board.isValidPosition(afterX, afterY) && board.getCell(afterX, afterY) == EMPTY)
-            openEnds++;
-
-        // Scoring with open ends penalty
-        int baseScore = 0;
-        if (myStones >= 4) baseScore = MOVE_WIN_OR_NEAR;
-        else if (myStones == 3) baseScore = MOVE_THREAT_4;
-        else if (myStones == 2) baseScore = MOVE_THREAT_3;
-        else if (myStones == 1) baseScore = MOVE_THREAT_2;
-
-        // Apply penalty for blocked alignments
-        if (openEnds == 0) baseScore = baseScore / 10;      // Completely blocked → 90% penalty
-        else if (openEnds == 1) baseScore = (baseScore * 4) / 10; // Semi-blocked → 60% penalty
-        // openEnds == 2 → full score (no penalty)
-
-        score += baseScore;
+        // Simple scoring
+        if (myStones >= 4) score += MOVE_WIN_OR_NEAR;
+        else if (myStones == 3) score += MOVE_THREAT_4;
+        else if (myStones == 2) score += MOVE_THREAT_3;
+        else if (myStones == 1) score += MOVE_THREAT_2;
 
         // Count OPPONENT stones (limit scan to 4 for speed)
         int oppStones = 0;
-        int oppLastPosX = pos.x, oppLastPosY = pos.y;
-        int oppFirstPosX = pos.x, oppFirstPosY = pos.y;
-
         for (int i = 1; i <= 4; i++) {
             int nx = pos.x + dx * i, ny = pos.y + dy * i;
-            if (board.isValidPosition(nx, ny) && board.getCell(nx, ny) == opponent) {
-                oppStones++;
-                oppLastPosX = nx;
-                oppLastPosY = ny;
-            }
+            if (board.isValidPosition(nx, ny) && board.getCell(nx, ny) == opponent) oppStones++;
             else break;
         }
         for (int i = 1; i <= 4; i++) {
             int nx = pos.x - dx * i, ny = pos.y - dy * i;
-            if (board.isValidPosition(nx, ny) && board.getCell(nx, ny) == opponent) {
-                oppStones++;
-                oppFirstPosX = nx;
-                oppFirstPosY = ny;
-            }
+            if (board.isValidPosition(nx, ny) && board.getCell(nx, ny) == opponent) oppStones++;
             else break;
         }
 
-        // Check opponent open ends
-        int oppOpenEnds = 0;
-        int oppBeforeX = oppFirstPosX - dx, oppBeforeY = oppFirstPosY - dy;
-        int oppAfterX = oppLastPosX + dx, oppAfterY = oppLastPosY + dy;
-
-        if (board.isValidPosition(oppBeforeX, oppBeforeY) && board.getCell(oppBeforeX, oppBeforeY) == EMPTY)
-            oppOpenEnds++;
-        if (board.isValidPosition(oppAfterX, oppAfterY) && board.getCell(oppAfterX, oppAfterY) == EMPTY)
-            oppOpenEnds++;
-
-        // Block bonus with open ends consideration
-        int blockScore = 0;
-        if (oppStones >= 4) blockScore = MOVE_BLOCK_4;
-        else if (oppStones == 3) blockScore = MOVE_BLOCK_3;
-        else if (oppStones == 2) blockScore = MOVE_BLOCK_2;
-        else if (oppStones == 1) blockScore = MOVE_BLOCK_1;
-
-        // Apply penalty for blocked opponent alignments (less urgent to block)
-        if (oppOpenEnds == 0) blockScore = blockScore / 10;
-        else if (oppOpenEnds == 1) blockScore = (blockScore * 4) / 10;
-
-        score += blockScore;
+        // Block bonus (slightly less than attack)
+        if (oppStones >= 4) score += MOVE_BLOCK_4;
+        else if (oppStones == 3) score += MOVE_BLOCK_3;
+        else if (oppStones == 2) score += MOVE_BLOCK_2;
+        else if (oppStones == 1) score += MOVE_BLOCK_1;
     }
 
     // Activity bonus (fast)
@@ -261,8 +204,6 @@ int Heuristic::getMoveScore(const Board& board, const Position& pos, CellState p
 
 int Heuristic::countAlignments(const Board& board, CellState player) {
     // FAST alignment counting - essential for tactical play
-    // NOTE: No open ends check here (too expensive in MinMax tree evaluation)
-    // Open ends detection is done in getMoveScore() for move ordering (more critical)
     int score = 0;
     int size = board.getSize();
 
@@ -285,7 +226,7 @@ int Heuristic::countAlignments(const Board& board, CellState player) {
                         fy += dy;
                     }
 
-                    // Simple scoring based on alignment length
+                    // Score based on alignment length (simplified scoring)
                     if (count >= 4) score += ALIGNMENT_4;
                     else if (count == 3) score += ALIGNMENT_3;
                     else if (count == 2) score += ALIGNMENT_2;
