@@ -134,6 +134,33 @@ int Heuristic::getMoveScore(const Board& board, const Position& pos, CellState p
     CellState opponent = (player == BLACK) ? WHITE : BLACK;
     int score = 0;
 
+    // NEW: Count adjacent stones to avoid isolated positions (captured stone spots)
+    int adjacentMyStones = 0;
+    int adjacentOpponentStones = 0;
+
+    for (int dx = -1; dx <= 1; dx++) {
+        for (int dy = -1; dy <= 1; dy++) {
+            if (dx == 0 && dy == 0) continue;
+            int nx = pos.x + dx, ny = pos.y + dy;
+            if (board.isValidPosition(nx, ny)) {
+                if (board.getCell(nx, ny) == player) adjacentMyStones++;
+                if (board.getCell(nx, ny) == opponent) adjacentOpponentStones++;
+            }
+        }
+    }
+
+    // PENALTY for isolated positions (often just-captured spots with only 1 adjacent stone)
+    int totalAdjacent = adjacentMyStones + adjacentOpponentStones;
+    if (totalAdjacent == 0) {
+        score -= 1000;  // Empty area = very bad
+    } else if (totalAdjacent == 1) {
+        score -= 500;   // Isolated (1 stone) = bad (likely captured stone)
+    }
+
+    // BONUS for dense areas (strategic crossroads)
+    score += adjacentMyStones * 50;
+    score += adjacentOpponentStones * 20;  // Also value blocking positions
+
     // ONLY fast operations: count stones in 4 directions
     for (int d = 0; d < 4; d++) {
         int dx = VECTORS[d][0];
@@ -241,6 +268,85 @@ int Heuristic::getMoveScore(const Board& board, const Position& pos, CellState p
 
         score += blockScore;
     }
+
+    // ===== CAPTURE DETECTION (CRITICAL TACTICAL FEATURE) =====
+    // Detect if this move would capture opponent stones
+    // Pattern: X - O - O - X (playing at X captures the 2 O's)
+    int captureScore = 0;
+    for (int d = 0; d < 4; d++) {
+        int dx = VECTORS[d][0];
+        int dy = VECTORS[d][1];
+
+        // Pattern: (pos) - O - O - X
+        if (board.isValidPosition(pos.x + dx, pos.y + dy) &&
+            board.isValidPosition(pos.x + 2*dx, pos.y + 2*dy) &&
+            board.isValidPosition(pos.x + 3*dx, pos.y + 3*dy)) {
+            if (board.getCell(pos.x + dx, pos.y + dy) == opponent &&
+                board.getCell(pos.x + 2*dx, pos.y + 2*dy) == opponent &&
+                board.getCell(pos.x + 3*dx, pos.y + 3*dy) == player) {
+                captureScore += MOVE_CAPTURE;
+            }
+        }
+
+        // Pattern: X - O - O - (pos)
+        if (board.isValidPosition(pos.x - dx, pos.y - dy) &&
+            board.isValidPosition(pos.x - 2*dx, pos.y - 2*dy) &&
+            board.isValidPosition(pos.x - 3*dx, pos.y - 3*dy)) {
+            if (board.getCell(pos.x - dx, pos.y - dy) == opponent &&
+                board.getCell(pos.x - 2*dx, pos.y - 2*dy) == opponent &&
+                board.getCell(pos.x - 3*dx, pos.y - 3*dy) == player) {
+                captureScore += MOVE_CAPTURE;
+            }
+        }
+    }
+    score += captureScore;
+
+    // ===== PREVENT OPPONENT CAPTURE (ADAPTIVE DEFENSE) =====
+    // Detect if opponent could capture us if we don't play here
+    // Defense priority scales with opponent's capture count (win at 10)
+    int preventCaptureScore = 0;
+    for (int d = 0; d < 4; d++) {
+        int dx = VECTORS[d][0];
+        int dy = VECTORS[d][1];
+
+        // Pattern: O - X - X - (pos)
+        if (board.isValidPosition(pos.x - dx, pos.y - dy) &&
+            board.isValidPosition(pos.x - 2*dx, pos.y - 2*dy) &&
+            board.isValidPosition(pos.x - 3*dx, pos.y - 3*dy)) {
+            if (board.getCell(pos.x - dx, pos.y - dy) == player &&
+                board.getCell(pos.x - 2*dx, pos.y - 2*dy) == player &&
+                board.getCell(pos.x - 3*dx, pos.y - 3*dy) == opponent) {
+                preventCaptureScore += MOVE_PREVENT_CAPTURE;
+            }
+        }
+
+        // Pattern: (pos) - X - X - O
+        if (board.isValidPosition(pos.x + dx, pos.y + dy) &&
+            board.isValidPosition(pos.x + 2*dx, pos.y + 2*dy) &&
+            board.isValidPosition(pos.x + 3*dx, pos.y + 3*dy)) {
+            if (board.getCell(pos.x + dx, pos.y + dy) == player &&
+                board.getCell(pos.x + 2*dx, pos.y + 2*dy) == player &&
+                board.getCell(pos.x + 3*dx, pos.y + 3*dy) == opponent) {
+                preventCaptureScore += MOVE_PREVENT_CAPTURE;
+            }
+        }
+    }
+
+    // ADAPTIVE: Scale defense priority based on opponent's capture count
+    if (preventCaptureScore > 0) {
+        int opponentCaptures = board.getCaptureCount(opponent);
+
+        // Urgency multiplier - closer to 10 captures = higher priority
+        if (opponentCaptures >= 8) {
+            preventCaptureScore *= 5;  // CRITICAL: 8-9 captures (score ~3000)
+        } else if (opponentCaptures >= 6) {
+            preventCaptureScore *= 3;  // HIGH: 6-7 captures (score ~1800)
+        } else if (opponentCaptures >= 4) {
+            preventCaptureScore *= 2;  // MEDIUM: 4-5 captures (score ~1200)
+        }
+        // 0-3 captures: base score (600)
+    }
+    score += preventCaptureScore;
 
     // Activity bonus (fast)
     int adjacent = 0;

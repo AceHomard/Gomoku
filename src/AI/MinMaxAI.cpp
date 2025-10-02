@@ -23,7 +23,8 @@ using namespace EvalScores;
 
 MinMaxAI::MinMaxAI(CellState playerColor, int depth, const std::string& playerName)
     : IPlayer(playerColor, AI, playerName), searchDepth(depth),
-      heuristic(std::make_unique<Heuristic>()), nodesEvaluated(0), cutoffsCount(0), debugMode(false) {
+      heuristic(std::make_unique<Heuristic>()),
+      nodesEvaluated(0), cutoffsCount(0), debugMode(false) {
 
     LOG_INFO("MinMaxAI initialized with depth=" << searchDepth);
 }
@@ -84,9 +85,23 @@ Position MinMaxAI::makeMove(const Board& board) {
         }
     }
 
-    // Safety check: if no valid move found, return error
+    // Safety check: if no valid move found in candidates, do fallback scan
     if (!foundValidMove) {
-        LOG_ERROR("No valid moves found! This should never happen!");
+        LOG_ERROR("No valid moves in candidate list - trying fallback full board scan");
+
+        // FALLBACK: Scan entire board for ANY valid move
+        // This is slower but prevents infinite loops when heuristic fails
+        for (int x = 0; x < board.getSize(); x++) {
+            for (int y = 0; y < board.getSize(); y++) {
+                if (Rules::isValidMove(board, x, y, color)) {
+                    LOG_INFO("Fallback found valid move at (" << x << "," << y << ")");
+                    return Position(x, y);
+                }
+            }
+        }
+
+        // Truly no valid moves exist (game should be over)
+        LOG_ERROR("No valid moves found even after full board scan!");
         return Position(-1, -1);
     }
 
@@ -171,6 +186,7 @@ int MinMaxAI::alphabeta(const Board& board, int depth, int alpha, int beta, bool
 
     if (maximizing) {
         int maxValue = std::numeric_limits<int>::min();
+
         for (const Position& move : moves) {
             Board tempBoard = board;
             if (tempBoard.placePiece(move.x, move.y, color)) {
@@ -182,7 +198,9 @@ int MinMaxAI::alphabeta(const Board& board, int depth, int alpha, int beta, bool
                     logNode(depth, move, value, maximizing);
                 }
 
-                maxValue = std::max(maxValue, value);
+                if (value > maxValue) {
+                    maxValue = value;
+                }
                 alpha = std::max(alpha, value);
 
                 // Alpha-Beta coupure
@@ -195,10 +213,12 @@ int MinMaxAI::alphabeta(const Board& board, int depth, int alpha, int beta, bool
                 }
             }
         }
+
         return maxValue;
     } else {
         int minValue = std::numeric_limits<int>::max();
         CellState opponentColor = (color == BLACK) ? WHITE : BLACK;
+
         for (const Position& move : moves) {
             Board tempBoard = board;
             if (tempBoard.placePiece(move.x, move.y, opponentColor)) {
@@ -210,7 +230,9 @@ int MinMaxAI::alphabeta(const Board& board, int depth, int alpha, int beta, bool
                     logNode(depth, move, value, maximizing);
                 }
 
-                minValue = std::min(minValue, value);
+                if (value < minValue) {
+                    minValue = value;
+                }
                 beta = std::min(beta, value);
 
                 // Alpha-Beta coupure
@@ -223,6 +245,7 @@ int MinMaxAI::alphabeta(const Board& board, int depth, int alpha, int beta, bool
                 }
             }
         }
+
         return minValue;
     }
 }

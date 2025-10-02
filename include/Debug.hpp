@@ -17,7 +17,7 @@
 
 // Define DEBUG_MODE to enable debug logging
 // Uncomment the line below for development/debugging
-// #define DEBUG_MODE
+#define DEBUG_MODE
 
 #ifdef DEBUG_MODE
     #define LOG_DEBUG(msg) std::cout << "[DEBUG] " << msg << std::endl

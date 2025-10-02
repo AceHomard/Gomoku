@@ -209,34 +209,64 @@ std::vector<Position> Board::checkCaptures(int x, int y, CellState player) const
 std::vector<Position> Board::checkCaptureDirection(int x, int y, int dx, int dy, CellState player) const {
     std::vector<Position> captures;
     CellState opponent = getOpponent(player);
-    
-    // Check for pattern: Player - Opponent - Opponent - Player
-    if (isValidPosition(x + dx, y + dy) && 
-        isValidPosition(x + 2*dx, y + 2*dy) && 
+
+    // CAPTURE RULE: Playing at (x,y) completes pattern X-O-O-X
+    // We capture the 2 opponent stones in the middle
+    // Pattern positions: (x,y) | +1 | +2 | +3
+    //                     X(new)| O  | O  | X(existing)
+    //
+    // Subject rule (appendix line 7): "One can only capture PAIRS, not single stones,
+    // and not more than 2 stones in a row"
+    //
+    // This means: If playing at (x,y) completes X-O-O-X, we capture ONLY if:
+    // 1. Positions +1 and +2 are opponent stones
+    // 2. Position +3 is our stone
+    // 3. There is NO 3rd opponent stone continuing the chain
+    //
+    // We DON'T care what's BEFORE position (x,y)
+
+    if (isValidPosition(x + dx, y + dy) &&
+        isValidPosition(x + 2*dx, y + 2*dy) &&
         isValidPosition(x + 3*dx, y + 3*dy)) {
-        
+
         if (grid[x + dx][y + dy] == opponent &&
             grid[x + 2*dx][y + 2*dy] == opponent &&
             grid[x + 3*dx][y + 3*dy] == player) {
-            
+
+            // Check for exactly 2 opponent stones (not 3+)
+            // We need to verify there's no opponent stone between +2 and +3
+            // But wait - +3 is already our player stone!
+            // So we can't have an opponent between +2 and +3.
+            //
+            // The issue is: what if the pattern is X-O-O-O-O-X?
+            // In this case, when we play at position 0, we have:
+            // +1=O, +2=O, +3=O (NOT player!) - so this won't match anyway.
+            //
+            // So actually, the basic pattern check ALREADY ensures exactly 2!
+            // Because +3 MUST be player, there can't be 3 consecutive opponents.
+
+            std::cout << "[CaptureCheck] Found valid capture at (" << x << "," << y
+                      << ") dir=(" << dx << "," << dy << ") capturing ("
+                      << (x+dx) << "," << (y+dy) << ") and ("
+                      << (x+2*dx) << "," << (y+2*dy) << ")" << std::endl;
             captures.push_back(Position(x + dx, y + dy));
             captures.push_back(Position(x + 2*dx, y + 2*dy));
         }
     }
-    
+
     return captures;
 }
 
 int Board::executeCaptures(const std::vector<Position>& captures) {
-    // Verbose logging for captures (useful during debugging/analysis) =======
-    
-    // if (!captures.empty()) {
-    //     std::cout << "[Capture] Removing " << captures.size() << " stones:";
-    //     for (const Position& p : captures) {
-    //         std::cout << " (" << p.x << "," << p.y << ")";
-    //     }
-    //     std::cout << std::endl;
-    // }
+    // Verbose logging for captures (useful during debugging/analysis)
+    if (!captures.empty()) {
+        std::cout << "[Capture] Removing " << captures.size() << " stones:";
+        for (const Position& p : captures) {
+            std::cout << " (" << p.x << "," << p.y << ")";
+        }
+        std::cout << std::endl;
+    }
+
     for (const Position& pos : captures) {
         if (isValidPosition(pos.x, pos.y)) {
             grid[pos.x][pos.y] = EMPTY;

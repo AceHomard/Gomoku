@@ -38,25 +38,30 @@ namespace EvalScores {
     constexpr int WIN_VALUE = 10000;   // Used by MinMaxAI
     constexpr int LOSE_VALUE = -10000; // Used by MinMaxAI
 
-    // Alignment scores
-    constexpr int ALIGNMENT_4 = 1000;
-    constexpr int ALIGNMENT_3 = 100;
-    constexpr int ALIGNMENT_2 = 10;
+    // Alignment scores (used in position evaluation)
+    constexpr int ALIGNMENT_4 = 2000;
+    constexpr int ALIGNMENT_3 = 500;
+    constexpr int ALIGNMENT_2 = 50;
 
-    // Move ordering scores
-    constexpr int MOVE_WIN_OR_NEAR = 10000;
-    constexpr int MOVE_THREAT_4 = 1000;
-    constexpr int MOVE_THREAT_3 = 100;
-    constexpr int MOVE_THREAT_2 = 10;
+    // Move ordering scores - Offensive (create threats)
+    constexpr int MOVE_WIN_OR_NEAR = 10000;    // Win immediately or force win
+    constexpr int MOVE_THREAT_4 = 3000;        // Create 4-alignment (very strong)
+    constexpr int MOVE_THREAT_3 = 1000;         // Create 3-alignment
+    constexpr int MOVE_THREAT_2 = 100;         // Create 2-alignment
 
-    constexpr int MOVE_BLOCK_4 = 8000;
-    constexpr int MOVE_BLOCK_3 = 800;
-    constexpr int MOVE_BLOCK_2 = 80;
-    constexpr int MOVE_BLOCK_1 = 8;
+    // Move ordering scores - Defensive (block opponent)
+    constexpr int MOVE_BLOCK_4 = 9000;         // MUST block 4-alignment
+    constexpr int MOVE_BLOCK_3 = 2000;         // Block 3-alignment
+    constexpr int MOVE_BLOCK_2 = 300;          // Block 2-alignment
+    constexpr int MOVE_BLOCK_1 = 50;
+
+    // Capture scores (tactical but not primary strategy)
+    constexpr int CAPTURE_BONUS = 2000;        // Bonus per capture pair in evaluation
+    constexpr int MOVE_CAPTURE = 1500;         // Move that captures opponent pair
+    constexpr int MOVE_PREVENT_CAPTURE = 2000;  // Block opponent capture opportunity
 
     // Other bonuses
     constexpr int STONE_COUNT_MULTIPLIER = 5;
-    constexpr int CAPTURE_BONUS = 200;
     constexpr int ACTIVITY_BONUS = 5;
     constexpr int MAX_CENTER_BONUS = 5;
 }
@@ -64,7 +69,7 @@ namespace EvalScores {
 // AI configuration
 namespace AIConfig {
     constexpr int DEFAULT_DEPTH = 10;
-    constexpr int MAX_MOVES_PER_LEVEL = 4;  // For performance <0.5s
+    constexpr int MAX_MOVES_PER_LEVEL = 3;  // For performance <0.5s
     constexpr int MAX_SCAN_DISTANCE = 4;     // For move scoring
 }
 

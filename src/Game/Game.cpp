@@ -321,17 +321,21 @@ void Game::handleAIMove() {
     }
     
     Position move = currentPlayer->makeMove(board);
-    
+
     // Stop AI timer and record the move time
     stopAITimer();
-    
+
     if (move.x >= 0 && move.y >= 0) {
         processMove(move, currentPlayer);
-        
+
         // Add placement animation
         if (renderer) {
             renderer->addAnimation(StoneAnimation::PLACE, move, 0.3f);
         }
+    } else {
+        // AI couldn't find a valid move - end game as draw
+        std::cout << "[Game] AI cannot find valid move - ending game as draw" << std::endl;
+        endGame(EMPTY);  // Draw
     }
 }
 

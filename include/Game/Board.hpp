@@ -52,7 +52,7 @@ public:
     void setCell(int x, int y, CellState state); // Direct cell manipulation (use with caution)
     bool isValidMove(int x, int y) const;
     int getSize() const { return size; }
-    
+
     // Win condition checking
     bool checkWin(CellState player) const;
     bool checkAlignment(int x, int y, CellState player) const;
