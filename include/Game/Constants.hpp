@@ -64,7 +64,7 @@ namespace EvalScores {
 // AI configuration
 namespace AIConfig {
     constexpr int DEFAULT_DEPTH = 10;
-    constexpr int MAX_MOVES_PER_LEVEL = 4;  // For performance <0.5s
+    constexpr int MAX_MOVES_PER_LEVEL = 3;  // For performance <0.5s
     constexpr int MAX_SCAN_DISTANCE = 4;     // For move scoring
 }
 

@@ -36,7 +36,7 @@ public:
     static std::vector<Position> findAllFreeThrees(const Board& board, int x, int y, CellState player);
 
     // Double-three rule validation
-    static bool violatesDoubleThreeRule(const Board& board, int x, int y, CellState player);
+    static bool violatesDoubleThreeRule(const Board& board, int x, int y, CellState player, bool checkCaptureException = true);
     static int countFreeThrees(const Board& board, int x, int y, CellState player);
 
     // Game state analysis

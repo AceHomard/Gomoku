@@ -49,6 +49,7 @@ public:
     void clear();
     bool placePiece(int x, int y, CellState player);
     CellState getCell(int x, int y) const;
+    void setCell(int x, int y, CellState state); // Direct cell manipulation (use with caution)
     bool isValidMove(int x, int y) const;
     int getSize() const { return size; }
     

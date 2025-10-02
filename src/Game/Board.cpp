@@ -91,10 +91,8 @@ bool Board::placePiece(int x, int y, CellState player) {
     if (!isValidMove(x, y)) {
         return false;
     }
-    // Enforce double-three rule before placing (captures are applied after placement)
-    if (isDoubleThree(x, y, player)) {
-        return false;
-    }
+    // NOTE: Double-three rule is now checked in Rules::isValidMove() with capture exception
+    // No need to check again here
 
     // Place the stone
     grid[x][y] = player;
@@ -118,6 +116,12 @@ CellState Board::getCell(int x, int y) const {
         return EMPTY;
     }
     return grid[x][y];
+}
+
+void Board::setCell(int x, int y, CellState state) {
+    if (isValidPosition(x, y)) {
+        grid[x][y] = state;
+    }
 }
 
 bool Board::isValidMove(int x, int y) const {

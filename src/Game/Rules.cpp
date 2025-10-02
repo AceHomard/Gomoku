@@ -42,7 +42,7 @@ bool Rules::isValidMove(const Board& board, int x, int y, CellState player) {
         }
     }
 
-    // Apply double-three rule
+    // Apply double-three rule (with capture exception by default)
     if (violatesDoubleThreeRule(board, x, y, player)) {
         return false;
     }
@@ -167,8 +167,34 @@ std::vector<Position> Rules::findAllFreeThrees(const Board& board, int x, int y,
 }
 
 // Double-three rule validation
-bool Rules::violatesDoubleThreeRule(const Board& board, int x, int y, CellState player) {
-    return countFreeThrees(board, x, y, player) >= 2;
+bool Rules::violatesDoubleThreeRule(const Board& board, int x, int y, CellState player, bool checkCaptureException) {
+    // First check if we have a double-three
+    if (countFreeThrees(board, x, y, player) < 2) {
+        return false; // No double-three
+    }
+
+    // We have a double-three. If capture exception is disabled, reject it
+    if (!checkCaptureException) {
+        return true; // Double-three violation
+    }
+
+    // EXCEPTION: It is NOT forbidden to introduce a double-three by capturing a pair (subject appendix)
+    // Check if this move would capture stones
+    Board tempBoard = board;
+    tempBoard.setCell(x, y, player); // Temporarily place stone
+    std::vector<Position> wouldCapture = tempBoard.checkCaptures(x, y, player);
+    tempBoard.setCell(x, y, EMPTY); // Remove temporary placement
+
+    // If the move captures at least one pair, double-three is allowed
+    if (!wouldCapture.empty()) {
+        LOG_RULE("Move (" << x << "," << y << ") creates double-three BUT captures "
+                 << wouldCapture.size() << " stones - LEGAL per subject rules");
+        return false; // NOT a violation (exception applies)
+    }
+
+    // Double-three without capture = violation
+    LOG_RULE("Move (" << x << "," << y << ") rejected - violates double-three rule (no capture)");
+    return true;
 }
 
 int Rules::countFreeThrees(const Board& board, int x, int y, CellState player) {
