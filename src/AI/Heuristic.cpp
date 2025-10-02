@@ -27,15 +27,12 @@ Heuristic::~Heuristic() = default;
 
 int Heuristic::evaluatePosition(const Board& board, CellState player) {
     // BALANCED EVALUATION - Intelligence + Speed for <0.5s at depth 10
+    // NOTE: Terminal state checks removed - handled by MinMaxAI::evaluateBoard()
 
     CellState opponent = (player == BLACK) ? WHITE : BLACK;
     int score = 0;
 
-    // 1. Check terminal states (mandatory)
-    if (board.checkWin(player)) return WIN;
-    if (board.checkWin(opponent)) return LOSS;
-
-    // 2. TACTICAL: Count alignments (2, 3, 4 in line) - uses existing fast function
+    // 1. TACTICAL: Count alignments (2, 3, 4 in line) - uses existing fast function
     int myAlignments = countAlignments(board, player);
     int opponentAlignments = countAlignments(board, opponent);
     score += myAlignments - opponentAlignments;

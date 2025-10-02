@@ -60,8 +60,7 @@ protected:
     // Move generation
     std::vector<Position> generateMoves(const Board& board);
 
-    // Terminal node evaluation
-    bool isTerminalNode(const Board& board, int depth);
+    // Board evaluation
     int evaluateBoard(const Board& board);
 
 private:
