@@ -50,10 +50,36 @@ int Heuristic::evaluatePosition(const Board& board, CellState player) {
     }
     score += (myStones - opponentStones) * STONE_COUNT_MULTIPLIER;
 
-    // 4. CAPTURES: Important bonus (fast lookup)
+    // 4. CAPTURES: Progressive bonus (fast lookup)
+    // Bonus increases exponentially as we approach 10 captures (win condition)
     int myCaptures = board.getCaptureCount(player);
     int opponentCaptures = board.getCaptureCount(opponent);
-    score += (myCaptures - opponentCaptures) * CAPTURE_BONUS;
+
+    int captureScore = 0;
+
+    // My captures: exponential bonus when close to victory
+    if (myCaptures >= 8) {
+        captureScore += myCaptures * CAPTURE_BONUS * 5;  // x5 multiplier: 8-9 captures = CRITICAL
+    } else if (myCaptures >= 6) {
+        captureScore += myCaptures * CAPTURE_BONUS * 3;  // x3 multiplier: 6-7 captures = HIGH
+    } else if (myCaptures >= 4) {
+        captureScore += myCaptures * CAPTURE_BONUS * 2;  // x2 multiplier: 4-5 captures = MEDIUM
+    } else {
+        captureScore += myCaptures * CAPTURE_BONUS;      // x1 multiplier: 0-3 captures = NORMAL
+    }
+
+    // Opponent captures: same progressive penalty (defend more urgently)
+    if (opponentCaptures >= 8) {
+        captureScore -= opponentCaptures * CAPTURE_BONUS * 5;  // DANGER: opponent close to win
+    } else if (opponentCaptures >= 6) {
+        captureScore -= opponentCaptures * CAPTURE_BONUS * 3;
+    } else if (opponentCaptures >= 4) {
+        captureScore -= opponentCaptures * CAPTURE_BONUS * 2;
+    } else {
+        captureScore -= opponentCaptures * CAPTURE_BONUS;
+    }
+
+    score += captureScore;
 
     return score;
 }
@@ -72,7 +98,7 @@ std::vector<Position> Heuristic::getRelevantMoves(const Board& board, CellState 
     // No mandatory moves - generate normal move candidates
     std::set<std::pair<int,int>> moveSet;
 
-    // Find all empty positions adjacent to existing pieces
+    // STEP 1: Generate candidates (FAST - only check if empty)
     for (int x = 0; x < board.getSize(); x++) {
         for (int y = 0; y < board.getSize(); y++) {
             if (board.getCell(x, y) != EMPTY) {
@@ -80,7 +106,7 @@ std::vector<Position> Heuristic::getRelevantMoves(const Board& board, CellState 
                 for (int dx = -1; dx <= 1; dx++) {
                     for (int dy = -1; dy <= 1; dy++) {
                         int nx = x + dx, ny = y + dy;
-                        if (board.isValidMove(nx, ny)) {
+                        if (board.isValidMove(nx, ny)) {  // Fast check: only tests if empty
                             moveSet.insert({nx, ny});
                         }
                     }
@@ -100,17 +126,32 @@ std::vector<Position> Heuristic::getRelevantMoves(const Board& board, CellState 
         moves.push_back(Position(center, center));
     }
 
-    // Sort moves by INTELLIGENT priority for better Alpha-Beta pruning
+    // STEP 2: Sort by tactical score (FAST)
     std::sort(moves.begin(), moves.end(), [&board, player, this](const Position& a, const Position& b) {
         return getMoveScore(board, a, player) > getMoveScore(board, b, player);
     });
 
-    // SPEED OPTIMIZATION: Limit moves for <0.5s performance
-    if (moves.size() > MAX_MOVES_PER_LEVEL) {
-        moves.resize(MAX_MOVES_PER_LEVEL);
+    // STEP 3: Validate and filter top candidates (SLOWER but limited scope)
+    // Check top candidates with Rules::isValidMove() to filter double-three violations
+    std::vector<Position> validMoves;
+    validMoves.reserve(MAX_MOVES_PER_LEVEL);
+
+    // OPTIMIZATION: Limit validation attempts to avoid performance degradation
+    size_t maxAttempts = std::min((size_t)MAX_VALIDATION_ATTEMPTS, moves.size());
+
+    for (size_t i = 0; i < maxAttempts; i++) {
+        const Position& move = moves[i];
+        if (Rules::isValidMove(board, move.x, move.y, player)) {
+            validMoves.push_back(move);
+            if (validMoves.size() >= MAX_MOVES_PER_LEVEL) {
+                break;  // Got enough valid moves
+            }
+        }
     }
 
-    return moves;
+    // If still no valid moves after checking top candidates, return what we have
+    // (may be empty - MinMaxAI will handle this case)
+    return validMoves;
 }
 
 bool Heuristic::hasAdjacentStone(const Board& board, int x, int y) {

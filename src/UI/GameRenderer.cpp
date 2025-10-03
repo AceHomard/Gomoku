@@ -132,13 +132,14 @@ GameRenderer::GameRenderer()
     , currentPlayerText(getDummyFont(), "", 16)
     , statusText(getDummyFont(), "", 14)
     , captureCountText(getDummyFont(), "", 14)
+    , turnCountText(getDummyFont(), "", 14)
     , gameInfoText(getDummyFont(), "", 12)
     , controlsHelpText(getDummyFont(), "", 10)
     , gameRef(nullptr)
     , boardRef(nullptr)
 {
     currentTheme = UITheme::createDefaultTheme();
-    
+
     setupDefaultFonts();
 }
 
@@ -407,26 +408,31 @@ void GameRenderer::renderUI() {
 
 void GameRenderer::renderGameInfo() {
     if (!gameRef || !fontsLoaded) return;
-    
+
     updateGameInfoText();
     updateCurrentPlayerText();
     updateCaptureText();
-    
+    updateTurnCountText();
+
     float yPos = 180;
     const float lineHeight = 25;
-    
+
     gameTitle.setPosition(sf::Vector2f(window->getSize().x - 240, yPos));
     window->draw(gameTitle);
     yPos += lineHeight;
-    
+
     currentPlayerText.setPosition(sf::Vector2f(window->getSize().x - 240, yPos));
     window->draw(currentPlayerText);
     yPos += lineHeight;
-    
+
     captureCountText.setPosition(sf::Vector2f(window->getSize().x - 240, yPos));
     window->draw(captureCountText);
     yPos += lineHeight;
-    
+
+    turnCountText.setPosition(sf::Vector2f(window->getSize().x - 240, yPos));
+    window->draw(turnCountText);
+    yPos += lineHeight;
+
     gameInfoText.setPosition(sf::Vector2f(window->getSize().x - 240, yPos));
     window->draw(gameInfoText);
 }
@@ -581,19 +587,22 @@ void GameRenderer::setupUI() {
 
 void GameRenderer::setupTexts() {
     if (!fontsLoaded) return;
-    
+
     currentPlayerText = sf::Text(mainFont, "", 16);
     currentPlayerText.setFillColor(currentTheme.highlightText);
-    
+
     statusText = sf::Text(mainFont, "", 14);
     statusText.setFillColor(currentTheme.primaryText);
-    
+
     captureCountText = sf::Text(mainFont, "", 14);
     captureCountText.setFillColor(currentTheme.secondaryText);
-    
+
+    turnCountText = sf::Text(mainFont, "", 14);
+    turnCountText.setFillColor(currentTheme.secondaryText);
+
     gameInfoText = sf::Text(mainFont, "", 12);
     gameInfoText.setFillColor(currentTheme.secondaryText);
-    
+
     controlsHelpText = sf::Text(monoFont, "", 10);
     controlsHelpText.setFillColor(currentTheme.secondaryText);
 }
@@ -738,13 +747,24 @@ void GameRenderer::updateStatusText() {
 
 void GameRenderer::updateCaptureText() {
     if (!gameRef || !boardRef) return;
-    
+
     int blackCaptures = boardRef->getCaptureCount(BLACK);
     int whiteCaptures = boardRef->getCaptureCount(WHITE);
-    
+
     std::ostringstream oss;
     oss << "Captures: Black=" << blackCaptures << ", White=" << whiteCaptures;
     captureCountText.setString(oss.str());
+}
+
+void GameRenderer::updateTurnCountText() {
+    if (!gameRef) return;
+
+    int totalMoves = gameRef->getTotalMoves();
+    int turnNumber = (totalMoves / 2) + 1;  // Tour = 2 coups (1 noir + 1 blanc)
+
+    std::ostringstream oss;
+    oss << "Turn: " << turnNumber << " (Move: " << totalMoves << ")";
+    turnCountText.setString(oss.str());
 }
 
 void GameRenderer::updateCurrentPlayerText() {
@@ -752,14 +772,18 @@ void GameRenderer::updateCurrentPlayerText() {
         currentPlayerText.setString("No active player");
         return;
     }
-    
+
     IPlayer* current = gameRef->getCurrentPlayer();
     std::string playerInfo = current->getName();
-    
+
     if (current->getType() == AI) {
         playerInfo += " (AI)";
     }
-    
+
+    // Add color information
+    std::string colorName = (current->getColor() == BLACK) ? "Black" : "White";
+    playerInfo += " - " + colorName;
+
     currentPlayerText.setString("Current: " + playerInfo);
 }
 

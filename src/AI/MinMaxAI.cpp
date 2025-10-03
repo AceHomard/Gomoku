@@ -85,23 +85,9 @@ Position MinMaxAI::makeMove(const Board& board) {
         }
     }
 
-    // Safety check: if no valid move found in candidates, do fallback scan
+    // Safety check: if no valid move found, game should be over
     if (!foundValidMove) {
-        LOG_ERROR("No valid moves in candidate list - trying fallback full board scan");
-
-        // FALLBACK: Scan entire board for ANY valid move
-        // This is slower but prevents infinite loops when heuristic fails
-        for (int x = 0; x < board.getSize(); x++) {
-            for (int y = 0; y < board.getSize(); y++) {
-                if (Rules::isValidMove(board, x, y, color)) {
-                    LOG_INFO("Fallback found valid move at (" << x << "," << y << ")");
-                    return Position(x, y);
-                }
-            }
-        }
-
-        // Truly no valid moves exist (game should be over)
-        LOG_ERROR("No valid moves found even after full board scan!");
+        LOG_ERROR("No valid moves found - game should be over!");
         return Position(-1, -1);
     }
 

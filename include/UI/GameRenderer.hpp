@@ -105,6 +105,7 @@ private:
     sf::Text currentPlayerText;
     sf::Text statusText;
     sf::Text captureCountText;
+    sf::Text turnCountText;
     sf::Text gameInfoText;
     sf::Text controlsHelpText;
     
@@ -179,6 +180,7 @@ public:
     void updateGameInfoText();
     void updateStatusText();
     void updateCaptureText();
+    void updateTurnCountText();
     void updateCurrentPlayerText();
     
     // Theme helpers

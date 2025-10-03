@@ -70,7 +70,7 @@ Game::Game()
     aiTimer->loadFont();
 
     calculateBoardDimensions();
-    startNewGame(HUMAN_VS_HUMAN);  // Start in PLAYING state instead of MENU
+    startNewGame(HUMAN_VS_HUMAN);  // Default: Human vs Human (press 2 for AI mode)
 }
 
 Game::~Game() {
