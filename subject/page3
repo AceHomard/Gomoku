@@ -1,28 +1,18 @@
-Chapter III
-Mandatory part
-You must write a program that lets you play Gomoku(with the rules specified previously):
-•The executable must be named Gomoku.
-•Against your program : The most interesting case, of course. The goal here is that
-the program wins the game, without you letting it win. It must be able to adapt
-its strategy to the player’s moves.
-•Against another human player on the same computer (hotseat), but with a move-
-suggestion feature. Easy to do once you have made a whole computer player.
-The AI will, basically, generate a possible-solution tree, and choose the best move accord-
-ing to this tree. You have to use a Min-Max algorithm for this. While this is rather easy
-in itself, since these algorithms are well-documented and you pretty much only have to
-implement them, for them to actually be useful, you need an efficient heuristic function
-to evaluate the value of a terminal node in your tree. You will have to experiment and
-refine it until it is sufficiently accurate while remaining fast enough. Don’t be fooled :
-The heuristic is actually the hardest part.
-To fully validate the project, your AI must search at least 10 levels
-deep in its game tree. A lower search depth will not allow you to
-reach the maximum grade, even if the AI appears to perform well.
-You must also provide a usable graphical interface to allow one to actually play Gomoku.
-After all, while the AI is the main focus here, your game still has to be playable. You’re
-free to use whichever graphical or ncurses-like library you want for this, as long as the
-end result is at least vaguely pleasing to the eye, and is easily playable.
-Also, it would be a very good idea to implement some sort of debugging process that lets
-you examine the reasoning process of your AI while it’s running. Not only would it be
-helpful to refine your AI’s tactics, but it would help during your defense sessions, since
-you will have to actually explain how it works.
-5
+Chapter V
+Submission and peer-evaluation
+Turninyourassignmentinyour Gitrepositoryasusual. Onlytheworkinsideyourrepos-
+itory will be evaluated during the defense. Don’t hesitate to double check the names of
+your folders and files to ensure they are correct.
+For the defense session, be prepared to :
+•Thoroughly explainyourimplementationoftheMinimaxalgorithm(orthevariant
+you chose). For the love of Tartiflette , I can not stress the " thoroughly " part
+enough: If you can not explain, in detail, your implementation of the algorithm to
+a grader who potentially knows nothing about Minimax, then you will not get any
+points for it. That would be bad.
+•Thoroughly explain your heuristic. You really need to spend some time on this,
+it has to be accurate, fast, AND you need to understand it well enough to explain
+it ! Same as before, if you can’t explain it well, then you don’t understand it well
+enough, and you won’t get points for it.
+•Show that you have correctly implemented the game rules imposed by the subject.
+•Run your program... and hope your AI isn’t completely wiped out by the person
+evaluating you.
