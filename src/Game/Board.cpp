@@ -293,6 +293,14 @@ std::vector<Position> Board::findFreeThrees(int x, int y, CellState player) cons
     for (int i = 0; i < 4; i++) {
         int dx = directions[i][0];
         int dy = directions[i][1];
+        
+        // Si le placement crée déjà un alignement de 4 ou plus dans cette direction,
+        // ce n'est pas un "trois libre" et ne doit pas compter pour un double-trois
+        int contiguous = countConsecutive(x, y, dx, dy, player);
+        if (contiguous >= 4) {
+            continue; // Skip this direction
+        }
+        
         if (isFreeThree(x, y, dx, dy, player)) {
             // Store the direction vector instead of just the position
             freeThreeDirections.push_back(Position(dx, dy));
@@ -306,13 +314,24 @@ std::vector<Position> Board::findFreeThrees(int x, int y, CellState player) cons
 }
 
 bool Board::isFreeThree(int x, int y, int dx, int dy, CellState player) const {
-    // Un "trois libre" est un pattern qui peut devenir un quatre gagnant
-    // après avoir placé une pierre à (x,y)
+    // Un "trois libre" peut être :
+    // 1. Exactement 3 pierres consécutives avec extrémités libres (_XXX_)
+    // 2. Un pattern avec gap qui forme 3 pierres après placement (_X_XX_, _XX_X_)
     
     // Simuler le placement de la pierre
     const_cast<Board*>(this)->grid[x][y] = player;
     
+    // Utiliser l'ancienne logique robuste qui gère tous les patterns
     bool result = canCreateUnstoppableFour(x, y, dx, dy, player);
+    
+    // Mais ajouter une vérification supplémentaire : on ne veut que les "trois libres"
+    // pas les alignements de 4 ou plus
+    if (result) {
+        int consecutive = countConsecutive(x, y, dx, dy, player);
+        if (consecutive >= 4) {
+            result = false; // Ce n'est pas un "trois libre" mais un alignement plus long
+        }
+    }
     
     // Retirer la pierre temporaire
     const_cast<Board*>(this)->grid[x][y] = EMPTY;
