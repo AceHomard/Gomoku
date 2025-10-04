@@ -114,6 +114,7 @@ private:
     
     // Highlighting system
     sf::CircleShape moveHighlight;
+    std::vector<sf::CircleShape> winningAlignmentHighlights;
     
     // Game state references (non-owning)
     const Game* gameRef;
@@ -153,6 +154,7 @@ public:
     
     // Highlighting
     void highlightMove(const Position& pos, sf::Color color = sf::Color::Yellow);
+    void highlightWinningAlignment(const std::vector<Position>& alignment, sf::Color color = sf::Color::Green);
     void clearHighlights();
     
     // Hit testing for color selection buttons (returns 1 for Black, 2 for White, 0 for none)

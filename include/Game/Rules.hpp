@@ -26,6 +26,9 @@ public:
     // Win condition checks
     static bool hasAlignmentWin(const Board& board, CellState player);
     static bool hasCaptureWin(const Board& board, CellState player);
+    
+    // Get winning alignment positions (returns empty vector if no win)
+    static std::vector<Position> getWinningAlignment(const Board& board, CellState player);
 
     // Capture detection
     static std::vector<Position> detectCaptures(const Board& board, int x, int y, CellState player);

@@ -77,6 +77,7 @@ private:
     bool gameWon;
     CellState winner;
     std::string statusMessage;
+    std::vector<Position> winningAlignment;  // Positions of winning 5-in-a-row alignment
    
     // Move suggestion system
     Position currentSuggestion;
@@ -125,6 +126,7 @@ public:
     GameMode getGameMode() const { return mode; }
     CellState getWinner() const { return winner; }
     const std::string& getStatusMessage() const { return statusMessage; }
+    const std::vector<Position>& getWinningAlignment() const { return winningAlignment; }
     
     // Move suggestion for hotseat mode
     void showMoveSuggestion();

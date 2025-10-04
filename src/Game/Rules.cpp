@@ -147,6 +147,86 @@ bool Rules::hasCaptureWin(const Board& board, CellState player) {
     return win;
 }
 
+std::vector<Position> Rules::getWinningAlignment(const Board& board, CellState player) {
+    CellState opponent = (player == BLACK) ? WHITE : BLACK;
+    
+    for (int x = 0; x < board.getSize(); x++) {
+        for (int y = 0; y < board.getSize(); y++) {
+            if (board.getCell(x, y) == player) {
+                for (int i = 0; i < NUM_DIRECTIONS; i++) {
+                    int dx = VECTORS[i][0];
+                    int dy = VECTORS[i][1];
+                    
+                    int count = 1;
+                    std::vector<Position> alignmentStones;
+                    alignmentStones.push_back(Position(x, y));
+                    
+                    // Count forward
+                    int nx = x + dx, ny = y + dy;
+                    while (nx >= 0 && nx < board.getSize() && ny >= 0 && ny < board.getSize() && 
+                           board.getCell(nx, ny) == player) {
+                        count++;
+                        alignmentStones.push_back(Position(nx, ny));
+                        nx += dx;
+                        ny += dy;
+                    }
+                    
+                    // Count backward
+                    nx = x - dx;
+                    ny = y - dy;
+                    while (nx >= 0 && nx < board.getSize() && ny >= 0 && ny < board.getSize() && 
+                           board.getCell(nx, ny) == player) {
+                        count++;
+                        alignmentStones.insert(alignmentStones.begin(), Position(nx, ny));
+                        nx -= dx;
+                        ny -= dy;
+                    }
+                    
+                    if (count >= WIN_ALIGNMENT) {
+                        // Check endgame capture rule: alignment wins only if opponent cannot break it by immediate capture
+                        bool canBeBroken = false;
+                        
+                        // Check if opponent can capture any stone in the alignment
+                        for (int ox = 0; ox < board.getSize() && !canBeBroken; ox++) {
+                            for (int oy = 0; oy < board.getSize() && !canBeBroken; oy++) {
+                                if (board.getCell(ox, oy) == EMPTY) {
+                                    // Basic validation only (NO recursion via isValidMove!)
+                                    if (!board.isValidMove(ox, oy)) {
+                                        continue;
+                                    }
+                                    // Check double-three directly (avoid full isValidMove to prevent recursion)
+                                    if (violatesDoubleThreeRule(board, ox, oy, opponent)) {
+                                        continue;
+                                    }
+                                    std::vector<Position> captures = board.checkCaptures(ox, oy, opponent);
+                                    // Check if any capture would remove a stone from our alignment
+                                    for (const Position& capture : captures) {
+                                        for (const Position& alignStone : alignmentStones) {
+                                            if (capture.x == alignStone.x && capture.y == alignStone.y) {
+                                                canBeBroken = true;
+                                                break;
+                                            }
+                                        }
+                                        if (canBeBroken) break;
+                                    }
+                                }
+                            }
+                        }
+                        
+                        // Return alignment if it's a valid win (cannot be broken)
+                        if (!canBeBroken) {
+                            return alignmentStones;
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    // No winning alignment found
+    return std::vector<Position>();
+}
+
 // Capture detection and validation
 std::vector<Position> Rules::detectCaptures(const Board& board, int x, int y, CellState player) {
     return board.checkCaptures(x, y, player);

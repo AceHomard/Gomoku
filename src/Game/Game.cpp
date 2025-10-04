@@ -425,6 +425,13 @@ void Game::checkWinCondition(IPlayer* player) {
     if (Rules::isGameWon(board, player->getColor())) {
         std::cout << "[WinCheck] Game won for "
                   << (player->getColor() == BLACK ? "BLACK" : "WHITE") << std::endl;
+        
+        // Capture winning alignment if it's an alignment win
+        if (Rules::hasAlignmentWin(board, player->getColor())) {
+            winningAlignment = Rules::getWinningAlignment(board, player->getColor());
+            std::cout << "[WinCheck] Winning alignment captured: " << winningAlignment.size() << " stones" << std::endl;
+        }
+        
         endGame(player->getColor());
     }
 }
@@ -507,6 +514,7 @@ void Game::reset() {
     currentPlayer = player1.get();
     gameWon = false;
     winner = EMPTY;
+    winningAlignment.clear();  // Clear winning alignment
     state = PLAYING;
     statusMessage = "Game reset!";
 }
@@ -553,6 +561,13 @@ void Game::endGame(CellState winnerColor) {
         } else {
             statusMessage = winnerName + " (" + colorName + ") wins by alignment!";
             std::cout << "[End] " << winnerName << " wins by alignment" << std::endl;
+            
+            // Highlight winning alignment if renderer is available
+            if (renderer && !winningAlignment.empty()) {
+                sf::Color highlightColor = (winner == BLACK) ? sf::Color(255, 215, 0, 200) : sf::Color(255, 255, 255, 200); // Gold for black, bright white for white
+                renderer->highlightWinningAlignment(winningAlignment, highlightColor);
+                std::cout << "[Highlight] Winning alignment highlighted with " << winningAlignment.size() << " stones" << std::endl;
+            }
         }
     }
     

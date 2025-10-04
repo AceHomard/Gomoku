@@ -277,6 +277,14 @@ void GameRenderer::render() {
     // Don't clear or display here - let the main game loop handle it
     renderBoard();
     renderStones();
+    
+    // Draw winning alignment highlights (if game is over and there's an alignment win)
+    if (gameRef && gameRef->isGameOver() && !gameRef->getWinningAlignment().empty()) {
+        for (const sf::CircleShape& highlight : winningAlignmentHighlights) {
+            window->draw(highlight);
+        }
+    }
+    
     // Draw current move highlight (e.g., suggestion) above stones but below UI
     if (moveHighlight.getOutlineThickness() > 0 && moveHighlight.getOutlineColor().a > 0) {
         window->draw(moveHighlight);
@@ -546,6 +554,25 @@ void GameRenderer::highlightMove(const Position& pos, sf::Color color) {
     moveHighlight.setPosition(screenPos);
 }
 
+void GameRenderer::highlightWinningAlignment(const std::vector<Position>& alignment, sf::Color color) {
+    winningAlignmentHighlights.clear();
+    
+    for (const Position& pos : alignment) {
+        sf::CircleShape highlight;
+        highlight.setRadius(cellSize * 0.5f);
+        highlight.setOrigin(sf::Vector2f(cellSize * 0.5f, cellSize * 0.5f));
+        highlight.setFillColor(sf::Color(color.r, color.g, color.b, 100)); // Semi-transparent fill
+        highlight.setOutlineColor(color);
+        highlight.setOutlineThickness(4.0f);
+        
+        sf::Vector2f screenPos(boardOffset.x + pos.x * cellSize,
+                              boardOffset.y + pos.y * cellSize);
+        highlight.setPosition(screenPos);
+        
+        winningAlignmentHighlights.push_back(highlight);
+    }
+}
+
 bool GameRenderer::isPositionOnBoard(int mouseX, int mouseY) const {
     sf::FloatRect boardBounds(sf::Vector2f(boardOffset.x - cellSize / 2, boardOffset.y - cellSize / 2),
                              sf::Vector2f((BOARD_SIZE) * cellSize, (BOARD_SIZE) * cellSize));
@@ -572,6 +599,8 @@ Position GameRenderer::getBoardPosition(int mouseX, int mouseY) const {
 void GameRenderer::clearHighlights() {
     // Hide the single-move highlight circle
     moveHighlight.setOutlineThickness(0);
+    // Clear winning alignment highlights
+    winningAlignmentHighlights.clear();
 }
 
 // Private method implementations
