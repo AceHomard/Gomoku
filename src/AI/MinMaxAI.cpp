@@ -205,8 +205,8 @@ void MinMaxAI::onGameStart() {
 void MinMaxAI::onGameEnd(bool won) {
     (void)won;
     LOG_INFO("MinMaxAI game ended - " << (won ? "Victory!" : "Defeat"));
-    std::cout << "[AI Stats] Max depth reached during game: " << maxDepthEverReached
-              << "/" << searchDepth << std::endl;
+    LOG_INFO("AI Stats: Max depth reached during game: " << maxDepthEverReached
+              << "/" << searchDepth);
 }
 
 std::string MinMaxAI::getIndent(int depth) const {

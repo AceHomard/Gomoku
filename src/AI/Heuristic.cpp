@@ -112,15 +112,14 @@ std::vector<Position> Heuristic::getRelevantMoves(const Board& board, CellState 
         moves.push_back(Position(center, center));
     }
 
-    // STEP 2: Pre-compute scores then sort (avoid redundant getMoveScore calls during sort)
-    std::vector<std::pair<int, int>> scoredIndices; // (score, index)
+    // STEP 2: Pre-compute scores to avoid inconsistent ordering from random noise
+    std::vector<std::pair<int, size_t>> scoredIndices;
     scoredIndices.reserve(moves.size());
     for (size_t i = 0; i < moves.size(); i++) {
-        scoredIndices.push_back({getMoveScore(board, moves[i], player), (int)i});
+        scoredIndices.push_back({getMoveScore(board, moves[i], player), i});
     }
-    std::sort(scoredIndices.begin(), scoredIndices.end(), [](const auto& a, const auto& b) {
-        return a.first > b.first;
-    });
+    std::sort(scoredIndices.begin(), scoredIndices.end(),
+              [](const auto& a, const auto& b) { return a.first > b.first; });
     std::vector<Position> sortedMoves;
     sortedMoves.reserve(moves.size());
     for (const auto& si : scoredIndices) {
@@ -431,6 +430,12 @@ int Heuristic::getMoveScore(const Board& board, const Position& pos, CellState p
     int center = board.getSize() / 2;
     int distanceFromCenter = std::abs(pos.x - center) + std::abs(pos.y - center);
     score += std::max(0, MAX_CENTER_BONUS - distanceFromCenter);
+
+    // Random noise for varied games (only when enabled)
+    if (noiseRange > 0) {
+        std::uniform_int_distribution<int> dist(-noiseRange, noiseRange);
+        score += dist(rng);
+    }
 
     return score;
 }

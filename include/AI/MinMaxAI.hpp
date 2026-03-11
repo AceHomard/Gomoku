@@ -72,6 +72,9 @@ public:
     void setSearchDepth(int depth) { searchDepth = std::max(1, depth); }
     int getSearchDepth() const { return searchDepth; }
 
+    // Randomization for varied games
+    void setRandomNoise(int maxNoise) { heuristic->setRandomNoise(maxNoise); }
+
     // Debug et statistiques
     void setDebugMode(bool enabled) { debugMode = enabled; }
     int getNodesEvaluated() const { return nodesEvaluated; }

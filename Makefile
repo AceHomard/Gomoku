@@ -31,9 +31,14 @@ SFML_URL	= https://github.com/SFML/SFML/archive/refs/tags/$(SFML_VERSION).tar.gz
 SFML_LIBS	= -L$(SFML_BUILD)/lib -lsfml-graphics-s -lsfml-window-s -lsfml-system-s
 SYSTEM_LIBS	= -lGL -lX11 -lXrandr -lXi -lXcursor -lpthread -ldl -ludev -lfreetype
 
-# Source files
-SOURCES		= $(wildcard $(SRC_DIR)/*.cpp) $(wildcard $(SRC_DIR)/**/*.cpp)
+# Source files (exclude benchmark from main build)
+ALL_SOURCES	= $(wildcard $(SRC_DIR)/*.cpp) $(wildcard $(SRC_DIR)/**/*.cpp)
+SOURCES		= $(filter-out $(SRC_DIR)/benchmark.cpp,$(ALL_SOURCES))
 OBJECTS		= $(patsubst $(SRC_DIR)/%.cpp,$(OBJ_DIR)/%.o,$(SOURCES))
+
+# Benchmark sources (shared objects + benchmark main, exclude main.cpp)
+BENCH_SOURCES	= $(filter-out $(SRC_DIR)/main.cpp $(SRC_DIR)/benchmark.cpp,$(ALL_SOURCES))
+BENCH_OBJECTS	= $(patsubst $(SRC_DIR)/%.cpp,$(OBJ_DIR)/%.o,$(BENCH_SOURCES))
 
 # SFML library files to check
 SFML_LIB_FILES = $(SFML_BUILD)/lib/libsfml-graphics.a \
@@ -51,9 +56,9 @@ WHITE	= \033[0;37m
 RESET	= \033[0m
 
 # Rules
-all: $(NAME)
+all: sfml $(NAME)
 
-$(NAME): sfml $(OBJECTS)
+$(NAME): $(OBJECTS)
 	@echo "$(GREEN)Linking $(NAME)...$(RESET)"
 	@$(CXX) $(OBJECTS) $(SFML_LIBS) $(SYSTEM_LIBS) -o $(NAME)
 	@echo "$(GREEN)✓ $(NAME) built successfully!$(RESET)"
@@ -64,10 +69,10 @@ $(OBJ_DIR)/%.o: $(SRC_DIR)/%.cpp
 	@mkdir -p $(dir $@)
 	@$(CXX) $(CXXFLAGS) $(INCLUDES) -c $< -o $@
 
-# SFML build target
-sfml: $(SFML_LIB_FILES)
+# SFML build target (use stamp file to avoid rebuilding)
+sfml: $(SFML_BUILD)/.stamp
 
-$(SFML_LIB_FILES): $(SFML_DIR)/CMakeLists.txt
+$(SFML_BUILD)/.stamp: $(SFML_DIR)/CMakeLists.txt
 	@echo "$(YELLOW)Building SFML...$(RESET)"
 	@mkdir -p $(SFML_BUILD)
 	@cd $(SFML_BUILD) && cmake .. \
@@ -80,6 +85,7 @@ $(SFML_LIB_FILES): $(SFML_DIR)/CMakeLists.txt
 		-DCMAKE_CXX_FLAGS="-fPIC" \
 		-DCMAKE_C_FLAGS="-fPIC"
 	@cd $(SFML_BUILD) && make -j$$(nproc)
+	@touch $@
 	@echo "$(GREEN)✓ SFML built successfully!$(RESET)"
 
 # Download and extract SFML
@@ -101,15 +107,25 @@ clean:
 # Clean everything including SFML and executable
 fclean: clean
 	@echo "$(RED)Full clean...$(RESET)"
-	@rm -f $(NAME)
+	@rm -f $(NAME) benchmark
 	@rm -rf $(LIB_DIR)
 	@echo "$(GREEN)✓ Full clean completed!$(RESET)"
 
 # Rebuild everything
 re: fclean all
 
+# Benchmark target (headless AI vs AI)
+benchmark: sfml $(BENCH_OBJECTS) $(OBJ_DIR)/benchmark.o
+	@if [ benchmark -nt $(OBJ_DIR)/benchmark.o ] 2>/dev/null; then \
+		echo "$(GREEN)benchmark is up to date$(RESET)"; \
+	else \
+		echo "$(GREEN)Linking benchmark...$(RESET)"; \
+		$(CXX) $(BENCH_OBJECTS) $(OBJ_DIR)/benchmark.o $(SFML_LIBS) $(SYSTEM_LIBS) -o benchmark; \
+		echo "$(GREEN)✓ benchmark built successfully!$(RESET)"; \
+	fi
+
 # Debug target for development
-debug: CXXFLAGS := -std=c++17 -Wall -Wextra -Werror -g -DDEBUG
+debug: CXXFLAGS := -std=c++17 -Wall -Wextra -Werror -g -DDEBUG -DDEBUG_MODE
 debug: $(NAME)
 
 # Install system dependencies (for Ubuntu/Debian)
@@ -138,9 +154,10 @@ help:
 	@echo "  $(GREEN)clean$(RESET)   - Remove object files"
 	@echo "  $(GREEN)fclean$(RESET)  - Remove all generated files including SFML"
 	@echo "  $(GREEN)re$(RESET)      - Rebuild everything from scratch"
+	@echo "  $(GREEN)benchmark$(RESET) - Build headless AI vs AI benchmark"
 	@echo "  $(GREEN)debug$(RESET)   - Build with debug flags"
 	@echo "  $(GREEN)deps$(RESET)    - Install system dependencies"
 	@echo "  $(GREEN)info$(RESET)    - Show build information"
 	@echo "  $(GREEN)help$(RESET)    - Show this help message"
 
-.PHONY: all clean fclean re sfml debug deps info help
+.PHONY: all clean fclean re sfml benchmark debug deps info help

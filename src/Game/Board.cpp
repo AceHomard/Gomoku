@@ -129,8 +129,10 @@ bool Board::placePiece(int x, int y, CellState player) {
     std::vector<Position> captures = checkCaptures(x, y, player);
     if (!captures.empty()) {
         int playerIdx = (player == BLACK) ? 0 : 1;
-        // Remove old capture count from hash
-        zobristHash ^= zobristCaptures[playerIdx][player == BLACK ? blackCaptures : whiteCaptures];
+        int oldCaptures = (player == BLACK) ? blackCaptures : whiteCaptures;
+
+        // Remove old capture count from hash (clamped to array bounds)
+        zobristHash ^= zobristCaptures[playerIdx][std::min(oldCaptures, 10)];
 
         int capturedCount = executeCaptures(captures);
         if (player == BLACK) {
@@ -139,8 +141,9 @@ bool Board::placePiece(int x, int y, CellState player) {
             whiteCaptures += capturedCount;
         }
 
-        // Add new capture count to hash
-        zobristHash ^= zobristCaptures[playerIdx][player == BLACK ? blackCaptures : whiteCaptures];
+        int newCaptures = (player == BLACK) ? blackCaptures : whiteCaptures;
+        // Add new capture count to hash (clamped to array bounds)
+        zobristHash ^= zobristCaptures[playerIdx][std::min(newCaptures, 10)];
     }
     
     return true;
@@ -358,7 +361,7 @@ std::vector<Position> Board::checkCaptureDirection(int x, int y, int dx, int dy,
             // So actually, the basic pattern check ALREADY ensures exactly 2!
             // Because +3 MUST be player, there can't be 3 consecutive opponents.
 
-            LOG_DEBUG("[CaptureCheck] Found valid capture at (" << x << "," << y
+            LOG_DEBUG("CaptureCheck: Found valid capture at (" << x << "," << y
                       << ") dir=(" << dx << "," << dy << ") capturing ("
                       << (x+dx) << "," << (y+dy) << ") and ("
                       << (x+2*dx) << "," << (y+2*dy) << ")");
@@ -371,10 +374,11 @@ std::vector<Position> Board::checkCaptureDirection(int x, int y, int dx, int dy,
 }
 
 int Board::executeCaptures(const std::vector<Position>& captures) {
-    // Verbose logging for captures (useful during debugging/analysis)
+#ifdef DEBUG_MODE
     if (!captures.empty()) {
-        LOG_DEBUG("[Capture] Removing " << captures.size() << " stones");
+        LOG_DEBUG("Capture: Removing " << captures.size() << " stones");
     }
+#endif
 
     for (const Position& pos : captures) {
         if (isValidPosition(pos.x, pos.y)) {

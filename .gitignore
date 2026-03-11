@@ -37,3 +37,5 @@ dist/
 /.claude
 
 Gomoku
+benchmark
+docs/
