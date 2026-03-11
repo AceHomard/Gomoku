@@ -26,32 +26,19 @@ Heuristic::Heuristic() = default;
 Heuristic::~Heuristic() = default;
 
 int Heuristic::evaluatePosition(const Board& board, CellState player) {
-    // BALANCED EVALUATION - Intelligence + Speed for <0.5s at depth 10
+    // PATTERN-AWARE EVALUATION - Distinguishes open vs blocked alignments
     // NOTE: Terminal state checks removed - handled by MinMaxAI::evaluateBoard()
 
     CellState opponent = (player == BLACK) ? WHITE : BLACK;
     int score = 0;
 
-    // 1. TACTICAL: Count alignments (2, 3, 4 in line) - uses existing fast function
-    int myAlignments = countAlignments(board, player);
-    int opponentAlignments = countAlignments(board, opponent);
-    score += myAlignments - opponentAlignments;
+    // 1. TACTICAL: Pattern-aware alignment scoring (open vs blocked)
+    int myPatterns = countPatterns(board, player);
+    int opponentPatterns = countPatterns(board, opponent);
+    // Slight defensive bias: opponent threats weighted 1.1x
+    score += myPatterns - (opponentPatterns * 11 / 10);
 
-    // 3. STRATEGIC: Stone count (fast)
-    int myStones = 0, opponentStones = 0;
-    int size = board.getSize();
-
-    for (int x = 0; x < size; x++) {
-        for (int y = 0; y < size; y++) {
-            CellState cell = board.getCell(x, y);
-            if (cell == player) myStones++;
-            else if (cell == opponent) opponentStones++;
-        }
-    }
-    score += (myStones - opponentStones) * STONE_COUNT_MULTIPLIER;
-
-    // 4. CAPTURES: Progressive bonus (fast lookup)
-    // Bonus increases exponentially as we approach 10 captures (win condition)
+    // 2. CAPTURES: Progressive bonus (fast lookup)
     int myCaptures = board.getCaptureCount(player);
     int opponentCaptures = board.getCaptureCount(opponent);
 
@@ -59,18 +46,18 @@ int Heuristic::evaluatePosition(const Board& board, CellState player) {
 
     // My captures: exponential bonus when close to victory
     if (myCaptures >= 8) {
-        captureScore += myCaptures * CAPTURE_BONUS * 5;  // x5 multiplier: 8-9 captures = CRITICAL
+        captureScore += myCaptures * CAPTURE_BONUS * 5;
     } else if (myCaptures >= 6) {
-        captureScore += myCaptures * CAPTURE_BONUS * 3;  // x3 multiplier: 6-7 captures = HIGH
+        captureScore += myCaptures * CAPTURE_BONUS * 3;
     } else if (myCaptures >= 4) {
-        captureScore += myCaptures * CAPTURE_BONUS * 2;  // x2 multiplier: 4-5 captures = MEDIUM
+        captureScore += myCaptures * CAPTURE_BONUS * 2;
     } else {
-        captureScore += myCaptures * CAPTURE_BONUS;      // x1 multiplier: 0-3 captures = NORMAL
+        captureScore += myCaptures * CAPTURE_BONUS;
     }
 
-    // Opponent captures: same progressive penalty (defend more urgently)
+    // Opponent captures: same progressive penalty
     if (opponentCaptures >= 8) {
-        captureScore -= opponentCaptures * CAPTURE_BONUS * 5;  // DANGER: opponent close to win
+        captureScore -= opponentCaptures * CAPTURE_BONUS * 5;
     } else if (opponentCaptures >= 6) {
         captureScore -= opponentCaptures * CAPTURE_BONUS * 3;
     } else if (opponentCaptures >= 4) {
@@ -84,29 +71,30 @@ int Heuristic::evaluatePosition(const Board& board, CellState player) {
     return score;
 }
 
-std::vector<Position> Heuristic::getRelevantMoves(const Board& board, CellState player) {
+std::vector<Position> Heuristic::getRelevantMoves(const Board& board, CellState player, bool fastMode) {
     std::vector<Position> moves;
 
     // PRIORITY 1: Check for mandatory defensive moves (endgame capture rule)
-    // If opponent has 5+ alignment that can be broken, we MUST play the capture moves
-    std::vector<Position> mandatoryMoves = Rules::getMandatoryDefensiveMoves(board, player);
-    if (!mandatoryMoves.empty()) {
-        LOG_INFO("Heuristic returning " << mandatoryMoves.size() << " mandatory defensive moves only");
-        return mandatoryMoves; // ONLY these moves are legal!
+    // ONLY at root level - too expensive for inner search nodes (O(n^4))
+    if (!fastMode) {
+        std::vector<Position> mandatoryMoves = Rules::getMandatoryDefensiveMoves(board, player);
+        if (!mandatoryMoves.empty()) {
+            LOG_INFO("Heuristic returning " << mandatoryMoves.size() << " mandatory defensive moves only");
+            return mandatoryMoves;
+        }
     }
 
-    // No mandatory moves - generate normal move candidates
+    // Generate normal move candidates
     std::set<std::pair<int,int>> moveSet;
 
     // STEP 1: Generate candidates (FAST - only check if empty)
     for (int x = 0; x < board.getSize(); x++) {
         for (int y = 0; y < board.getSize(); y++) {
             if (board.getCell(x, y) != EMPTY) {
-                // Add all adjacent empty positions
                 for (int dx = -1; dx <= 1; dx++) {
                     for (int dy = -1; dy <= 1; dy++) {
                         int nx = x + dx, ny = y + dy;
-                        if (board.isValidMove(nx, ny)) {  // Fast check: only tests if empty
+                        if (board.isValidMove(nx, ny)) {
                             moveSet.insert({nx, ny});
                         }
                     }
@@ -115,28 +103,44 @@ std::vector<Position> Heuristic::getRelevantMoves(const Board& board, CellState 
         }
     }
 
-    // Convert set to vector with move scoring
     for (const auto& move : moveSet) {
         moves.push_back(Position(move.first, move.second));
     }
 
-    // If no moves found (empty board), return center
     if (moves.empty()) {
         int center = board.getSize() / 2;
         moves.push_back(Position(center, center));
     }
 
-    // STEP 2: Sort by tactical score (FAST)
-    std::sort(moves.begin(), moves.end(), [&board, player, this](const Position& a, const Position& b) {
-        return getMoveScore(board, a, player) > getMoveScore(board, b, player);
+    // STEP 2: Pre-compute scores then sort (avoid redundant getMoveScore calls during sort)
+    std::vector<std::pair<int, int>> scoredIndices; // (score, index)
+    scoredIndices.reserve(moves.size());
+    for (size_t i = 0; i < moves.size(); i++) {
+        scoredIndices.push_back({getMoveScore(board, moves[i], player), (int)i});
+    }
+    std::sort(scoredIndices.begin(), scoredIndices.end(), [](const auto& a, const auto& b) {
+        return a.first > b.first;
     });
+    std::vector<Position> sortedMoves;
+    sortedMoves.reserve(moves.size());
+    for (const auto& si : scoredIndices) {
+        sortedMoves.push_back(moves[si.second]);
+    }
+    moves = std::move(sortedMoves);
 
-    // STEP 3: Validate and filter top candidates (SLOWER but limited scope)
-    // Check top candidates with Rules::isValidMove() to filter double-three violations
+    // STEP 3: Filter top candidates
+    if (fastMode) {
+        // FAST MODE: Skip expensive Rules::isValidMove (mandatory moves + double-three)
+        // Just take top N moves that are empty cells (already guaranteed by moveSet)
+        size_t count = std::min((size_t)MAX_MOVES_PER_LEVEL, moves.size());
+        moves.resize(count);
+        return moves;
+    }
+
+    // FULL MODE (root): Validate with Rules::isValidMove for double-three etc.
     std::vector<Position> validMoves;
     validMoves.reserve(MAX_MOVES_PER_LEVEL);
 
-    // OPTIMIZATION: Limit validation attempts to avoid performance degradation
     size_t maxAttempts = std::min((size_t)MAX_VALIDATION_ATTEMPTS, moves.size());
 
     for (size_t i = 0; i < maxAttempts; i++) {
@@ -144,13 +148,11 @@ std::vector<Position> Heuristic::getRelevantMoves(const Board& board, CellState 
         if (Rules::isValidMove(board, move.x, move.y, player)) {
             validMoves.push_back(move);
             if (validMoves.size() >= MAX_MOVES_PER_LEVEL) {
-                break;  // Got enough valid moves
+                break;
             }
         }
     }
 
-    // If still no valid moves after checking top candidates, return what we have
-    // (may be empty - MinMaxAI will handle this case)
     return validMoves;
 }
 
@@ -244,12 +246,16 @@ int Heuristic::getMoveScore(const Board& board, const Position& pos, CellState p
 
         // Calculate base score
         int baseScore = 0;
-        if (myStones >= 4) baseScore = MOVE_WIN_OR_NEAR;
+        if (myStones >= 4) {
+            // 5+ in a row = WIN, regardless of blocking (subject: "5 or more is a win")
+            // Return immediately with maximum score - no penalty can override this
+            return 100000;
+        }
         else if (myStones == 3) baseScore = MOVE_THREAT_4;
         else if (myStones == 2) baseScore = MOVE_THREAT_3;
         else if (myStones == 1) baseScore = MOVE_THREAT_2;
 
-        // Apply simple penalty: immediate adjacency only
+        // Apply simple penalty: immediate adjacency only (never for winning moves)
         if (!beforeEmpty && !afterEmpty) {
             baseScore = 0; // Both sides immediately blocked
         } else if (!beforeEmpty || !afterEmpty) {
@@ -295,7 +301,10 @@ int Heuristic::getMoveScore(const Board& board, const Position& pos, CellState p
 
         // Calculate block score
         int blockScore = 0;
-        if (oppStones >= 4) blockScore = MOVE_BLOCK_4;
+        if (oppStones >= 4) {
+            // Opponent has 5+ in a row if we don't block = MUST block immediately
+            return 90000;
+        }
         else if (oppStones == 3) blockScore = MOVE_BLOCK_3;
         else if (oppStones == 2) blockScore = MOVE_BLOCK_2;
         else if (oppStones == 1) blockScore = MOVE_BLOCK_1;
@@ -339,6 +348,19 @@ int Heuristic::getMoveScore(const Board& board, const Position& pos, CellState p
                 captureScore += MOVE_CAPTURE;
             }
         }
+    }
+    // ADAPTIVE: Scale capture priority based on OUR capture count
+    if (captureScore > 0) {
+        int myCaptures = board.getCaptureCount(player);
+        // Each capture takes 2 stones, win at 10. So 8+ = next capture wins!
+        if (myCaptures >= 8) {
+            captureScore *= 10; // WINNING CAPTURE - highest priority
+        } else if (myCaptures >= 6) {
+            captureScore *= 5;  // Very close to win
+        } else if (myCaptures >= 4) {
+            captureScore *= 3;  // Getting dangerous
+        }
+        // 0-3 captures: base score (1000)
     }
     score += captureScore;
 
@@ -410,40 +432,75 @@ int Heuristic::getMoveScore(const Board& board, const Position& pos, CellState p
     return score;
 }
 
-int Heuristic::countAlignments(const Board& board, CellState player) {
-    // FAST alignment counting - essential for tactical play
+int Heuristic::countPatterns(const Board& board, CellState player) {
+    // PATTERN-AWARE scoring: distinguishes live (open) vs rush (half-open) vs dead (blocked)
+    // A "live" pattern has BOTH ends empty = much more dangerous
+    // A "rush" pattern has ONE end empty = still threatening
+    // A "dead" pattern has BOTH ends blocked = harmless, score 0
+
     int score = 0;
     int size = board.getSize();
 
-    // Scan board for player stones and check alignments
     for (int x = 0; x < size; x++) {
         for (int y = 0; y < size; y++) {
-            if (board.getCell(x, y) == player) {
-                // Check 4 directions: horizontal, vertical, diagonal, anti-diagonal
-                for (int d = 0; d < 4; d++) {
-                    int dx = VECTORS[d][0];
-                    int dy = VECTORS[d][1];
+            if (board.getCell(x, y) != player) continue;
 
-                    // Count forward only to avoid double counting
-                    int count = 1;
-                    int fx = x + dx, fy = y + dy;
-                    while (fx >= 0 && fx < size && fy >= 0 && fy < size &&
-                           board.getCell(fx, fy) == player) {
-                        count++;
-                        fx += dx;
-                        fy += dy;
-                    }
+            for (int d = 0; d < 4; d++) {
+                int dx = VECTORS[d][0];
+                int dy = VECTORS[d][1];
 
-                    // Score based on alignment length (simplified scoring)
-                    if (count >= 4) score += ALIGNMENT_4;
-                    else if (count == 3) score += ALIGNMENT_3;
-                    else if (count == 2) score += ALIGNMENT_2;
+                // Only count forward to avoid double-counting
+                // Skip if previous cell in this direction is also player (not start of group)
+                int px = x - dx, py = y - dy;
+                if (px >= 0 && px < size && py >= 0 && py < size &&
+                    board.getCell(px, py) == player) {
+                    continue; // Not the start of this alignment
+                }
+
+                // Count consecutive stones forward
+                int count = 1;
+                int fx = x + dx, fy = y + dy;
+                while (fx >= 0 && fx < size && fy >= 0 && fy < size &&
+                       board.getCell(fx, fy) == player) {
+                    count++;
+                    fx += dx;
+                    fy += dy;
+                }
+
+                // Check ends: before the start and after the end
+                // "before" = cell before (x,y) in this direction
+                bool beforeOpen = (px >= 0 && px < size && py >= 0 && py < size &&
+                                   board.getCell(px, py) == EMPTY);
+                // "after" = cell after last stone (fx, fy)
+                bool afterOpen = (fx >= 0 && fx < size && fy >= 0 && fy < size &&
+                                  board.getCell(fx, fy) == EMPTY);
+
+                int openEnds = (beforeOpen ? 1 : 0) + (afterOpen ? 1 : 0);
+
+                // Score based on count + openness
+                if (count >= 5) {
+                    score += LIVE_FOUR; // Already won
+                } else if (count == 4) {
+                    if (openEnds == 2) score += LIVE_FOUR;      // _XXXX_ = forced win
+                    else if (openEnds == 1) score += RUSH_FOUR; // OXXXX_ = one way
+                    // openEnds == 0: dead four, score 0
+                } else if (count == 3) {
+                    if (openEnds == 2) score += LIVE_THREE;      // _XXX_ = very dangerous
+                    else if (openEnds == 1) score += RUSH_THREE;  // OXXX_ = still a threat
+                } else if (count == 2) {
+                    if (openEnds == 2) score += LIVE_TWO;         // _XX_ = potential
+                    else if (openEnds == 1) score += RUSH_TWO;    // OXX_ = limited
                 }
             }
         }
     }
 
     return score;
+}
+
+int Heuristic::countAlignments(const Board& board, CellState player) {
+    // Legacy function kept for compatibility - delegates to countPatterns
+    return countPatterns(board, player);
 }
 
 // End of Heuristic.cpp - Dead code removed

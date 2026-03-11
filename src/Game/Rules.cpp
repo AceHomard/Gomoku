@@ -25,20 +25,34 @@ bool Rules::isValidMove(const Board& board, int x, int y, CellState player) {
     }
 
     // PRIORITY: Check for mandatory defensive moves (endgame capture rule)
+    // BUT: if this move itself creates a winning alignment, allow it (winning takes priority)
     std::vector<Position> mandatoryMoves = getMandatoryDefensiveMoves(board, player);
     if (!mandatoryMoves.empty()) {
-        // There are mandatory moves - check if this is one of them
-        bool isMandatory = false;
-        for (const Position& mandatory : mandatoryMoves) {
-            if (mandatory.x == x && mandatory.y == y) {
-                isMandatory = true;
-                break;
-            }
+        // Check if this move creates a winning alignment for us
+        Board tempBoard = board;
+        tempBoard.setCell(x, y, player);
+        // Apply captures from this move
+        std::vector<Position> captures = board.checkCaptures(x, y, player);
+        for (const Position& cap : captures) {
+            tempBoard.setCell(cap.x, cap.y, EMPTY);
         }
+        bool thisMovWins = hasAlignmentWin(tempBoard, player) ||
+                           (board.getCaptureCount(player) + (int)captures.size() >= 10);
 
-        if (!isMandatory) {
-            LOG_RULE("Move (" << x << "," << y << ") rejected - player MUST play mandatory defensive capture");
-            return false; // Invalid - not a mandatory move
+        if (!thisMovWins) {
+            // There are mandatory moves and we're not winning - check if this is one of them
+            bool isMandatory = false;
+            for (const Position& mandatory : mandatoryMoves) {
+                if (mandatory.x == x && mandatory.y == y) {
+                    isMandatory = true;
+                    break;
+                }
+            }
+
+            if (!isMandatory) {
+                LOG_RULE("Move (" << x << "," << y << ") rejected - player MUST play mandatory defensive capture");
+                return false; // Invalid - not a mandatory move
+            }
         }
     }
 

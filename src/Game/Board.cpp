@@ -11,6 +11,7 @@
 /* ************************************************************************** */
 
 #include "Game/Board.hpp"
+#include "Debug.hpp"
 #include <string>
 #include <iostream>
 
@@ -109,6 +110,54 @@ bool Board::placePiece(int x, int y, CellState player) {
     }
     
     return true;
+}
+
+MoveUndo Board::makeMove(int x, int y, CellState player) {
+    MoveUndo undo;
+    undo.x = x;
+    undo.y = y;
+    undo.player = player;
+    undo.capturedColor = getOpponent(player);
+    undo.capturedCount = 0;
+
+    // Place the stone
+    grid[x][y] = player;
+
+    // Check and execute captures
+    std::vector<Position> captures = checkCaptures(x, y, player);
+    if (!captures.empty()) {
+        undo.capturedStones = captures;
+        undo.capturedCount = captures.size();
+        for (const Position& pos : captures) {
+            grid[pos.x][pos.y] = EMPTY;
+        }
+        if (player == BLACK) {
+            blackCaptures += undo.capturedCount;
+        } else {
+            whiteCaptures += undo.capturedCount;
+        }
+    }
+
+    return undo;
+}
+
+void Board::unmakeMove(const MoveUndo& undo) {
+    // Remove the placed stone
+    grid[undo.x][undo.y] = EMPTY;
+
+    // Restore captured stones
+    for (const Position& pos : undo.capturedStones) {
+        grid[pos.x][pos.y] = undo.capturedColor;
+    }
+
+    // Restore capture counter
+    if (undo.capturedCount > 0) {
+        if (undo.player == BLACK) {
+            blackCaptures -= undo.capturedCount;
+        } else {
+            whiteCaptures -= undo.capturedCount;
+        }
+    }
 }
 
 CellState Board::getCell(int x, int y) const {
@@ -245,10 +294,10 @@ std::vector<Position> Board::checkCaptureDirection(int x, int y, int dx, int dy,
             // So actually, the basic pattern check ALREADY ensures exactly 2!
             // Because +3 MUST be player, there can't be 3 consecutive opponents.
 
-            std::cout << "[CaptureCheck] Found valid capture at (" << x << "," << y
+            LOG_DEBUG("[CaptureCheck] Found valid capture at (" << x << "," << y
                       << ") dir=(" << dx << "," << dy << ") capturing ("
                       << (x+dx) << "," << (y+dy) << ") and ("
-                      << (x+2*dx) << "," << (y+2*dy) << ")" << std::endl;
+                      << (x+2*dx) << "," << (y+2*dy) << ")");
             captures.push_back(Position(x + dx, y + dy));
             captures.push_back(Position(x + 2*dx, y + 2*dy));
         }
@@ -260,11 +309,7 @@ std::vector<Position> Board::checkCaptureDirection(int x, int y, int dx, int dy,
 int Board::executeCaptures(const std::vector<Position>& captures) {
     // Verbose logging for captures (useful during debugging/analysis)
     if (!captures.empty()) {
-        std::cout << "[Capture] Removing " << captures.size() << " stones:";
-        for (const Position& p : captures) {
-            std::cout << " (" << p.x << "," << p.y << ")";
-        }
-        std::cout << std::endl;
+        LOG_DEBUG("[Capture] Removing " << captures.size() << " stones");
     }
 
     for (const Position& pos : captures) {

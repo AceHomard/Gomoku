@@ -26,7 +26,8 @@ public:
     int evaluatePosition(const Board& board, CellState player);
     
     // Move generation - returns moves adjacent to existing pieces
-    std::vector<Position> getRelevantMoves(const Board& board, CellState player);
+    // fastMode=true skips expensive validation (mandatory moves, double-three) for inner search nodes
+    std::vector<Position> getRelevantMoves(const Board& board, CellState player, bool fastMode = false);
 
 private:
     // Helper to check if position has adjacent stones
@@ -35,7 +36,10 @@ private:
     // Move scoring for Alpha-Beta move ordering
     int getMoveScore(const Board& board, const Position& pos, CellState player);
 
-    // Core evaluation method (actually used)
+    // Pattern-aware evaluation: distinguishes open vs blocked alignments
+    int countPatterns(const Board& board, CellState player);
+
+    // Legacy alignment counting (kept for reference)
     int countAlignments(const Board& board, CellState player);
 };
 

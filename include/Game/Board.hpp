@@ -34,6 +34,15 @@ struct Position {
     }
 };
 
+// Stores info needed to undo a move (for make/unmake pattern in AI search)
+struct MoveUndo {
+    int x, y;
+    CellState player;
+    std::vector<Position> capturedStones;  // positions of captured opponent stones
+    CellState capturedColor;               // color of captured stones
+    int capturedCount;                     // number of stones captured (for capture counter)
+};
+
 class Board {
 private:
     std::vector<std::vector<CellState>> grid;
@@ -44,7 +53,7 @@ private:
 public:
     Board(int boardSize = BOARD_SIZE);
     ~Board();
-    
+
     // Basic board operations
     void clear();
     bool placePiece(int x, int y, CellState player);
@@ -52,6 +61,10 @@ public:
     void setCell(int x, int y, CellState state); // Direct cell manipulation (use with caution)
     bool isValidMove(int x, int y) const;
     int getSize() const { return size; }
+
+    // Make/Unmake pattern for AI search (avoids board copy)
+    MoveUndo makeMove(int x, int y, CellState player);
+    void unmakeMove(const MoveUndo& undo);
 
     // Win condition checking
     bool checkWin(CellState player) const;
