@@ -38,6 +38,7 @@ public:
     int getDifficulty() const { return difficulty; }
     void setSearchDepth(int depth);
     int getSearchDepth() const;
+    int getMaxDepthEverReached() const;
 };
 
 #endif // AIPLAYER_HPP

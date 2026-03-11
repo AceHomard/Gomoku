@@ -68,3 +68,10 @@ int AIPlayer::getSearchDepth() const {
     }
     return searchDepth;
 }
+
+int AIPlayer::getMaxDepthEverReached() const {
+    if (minMaxEngine) {
+        return minMaxEngine->getMaxDepthEverReached();
+    }
+    return 0;
+}

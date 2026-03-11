@@ -574,6 +574,20 @@ void Game::endGame(CellState winnerColor) {
     // Notify players
     if (player1) player1->onGameEnd(player1->getColor() == winner);
     if (player2) player2->onGameEnd(player2->getColor() == winner);
+
+    // Display AI max depth stats
+    auto printAIStats = [](IPlayer* p) {
+        if (p && p->isAI()) {
+            AIPlayer* ai = dynamic_cast<AIPlayer*>(p);
+            if (ai) {
+                std::cout << "[AI Stats] " << p->getName()
+                          << " max depth reached: " << ai->getMaxDepthEverReached()
+                          << "/" << ai->getSearchDepth() << std::endl;
+            }
+        }
+    };
+    printAIStats(player1.get());
+    printAIStats(player2.get());
 }
 
 // Rendering methods
