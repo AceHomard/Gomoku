@@ -69,8 +69,11 @@ namespace EvalScores {
 // AI configuration
 namespace AIConfig {
     constexpr int DEFAULT_DEPTH = 10;
-    constexpr int MAX_MOVES_PER_LEVEL = 3;       // Top N valid moves to keep
-    constexpr int MAX_VALIDATION_ATTEMPTS = 10;  // Max candidates to validate before giving up
+    constexpr int MIN_DEPTH = 10;                  // Minimum depth guaranteed (subject requirement)
+    constexpr int DEFAULT_TIME_LIMIT_MS = 490;    // Time budget per move (iterative deepening, applies after MIN_DEPTH)
+    constexpr int TIME_CHECK_INTERVAL = 1000;     // Check time every N nodes
+    constexpr int MAX_MOVES_PER_LEVEL = 5;       // Top N valid moves to keep
+    constexpr int MAX_VALIDATION_ATTEMPTS = 15;  // Max candidates to validate before giving up
     constexpr int MAX_SCAN_DISTANCE = 4;         // For move scoring
 }
 

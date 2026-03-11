@@ -17,15 +17,45 @@
 #include "../Game/Board.hpp"
 #include "Heuristic.hpp"
 #include <memory>
+#include <chrono>
+#include <array>
+#include <unordered_map>
+
+enum TTFlag { TT_EXACT, TT_LOWERBOUND, TT_UPPERBOUND };
+
+struct TTEntry {
+    uint64_t hash;       // Full hash for collision detection
+    int depth;
+    int value;
+    TTFlag flag;
+    Position bestMove;
+};
 
 class MinMaxAI : public IPlayer {
 private:
     int searchDepth;
+    int timeLimitMs;
     std::unique_ptr<Heuristic> heuristic;
+
+    // Iterative deepening
+    mutable std::chrono::high_resolution_clock::time_point searchStartTime;
+    mutable bool timeExpired;
+    mutable bool inGuaranteedDepth;  // Skip time checks during MIN_DEPTH iterations
+
+    // Killer move heuristic (2 slots per depth level)
+    static constexpr int MAX_KILLER_SLOTS = 2;
+    mutable std::vector<std::array<Position, 2>> killerMoves;
+
+    // Transposition table
+    static constexpr size_t MAX_TT_SIZE = 1 << 20; // ~1M entries
+    mutable std::unordered_map<uint64_t, TTEntry> transpositionTable;
+    mutable int ttHits;
 
     // Debug et performance
     mutable int nodesEvaluated;
     mutable int cutoffsCount;
+    mutable int depthReached;
+    mutable int maxDepthEverReached;  // Max depth across entire game
     mutable bool debugMode;
 
 public:
@@ -46,9 +76,13 @@ public:
     void setDebugMode(bool enabled) { debugMode = enabled; }
     int getNodesEvaluated() const { return nodesEvaluated; }
     int getCutoffsCount() const { return cutoffsCount; }
+    int getDepthReached() const { return depthReached; }
+    int getMaxDepthEverReached() const { return maxDepthEverReached; }
+
+    int getTTHits() const { return ttHits; }
 
     // Setters pour tests
-    void resetCounters() { nodesEvaluated = 0; cutoffsCount = 0; }
+    void resetCounters() { nodesEvaluated = 0; cutoffsCount = 0; depthReached = 0; ttHits = 0; }
     
 protected:
     // Core minimax algorithm
@@ -64,6 +98,9 @@ protected:
     int evaluateBoard(const Board& board);
 
 private:
+    // Time management
+    bool isTimeUp() const;
+
     // Debug helpers
     std::string getIndent(int depth) const;
     void logNode(int depth, const Position& move, int value, bool maximizing) const;
