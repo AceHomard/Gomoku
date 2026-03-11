@@ -38,7 +38,16 @@ namespace EvalScores {
     constexpr int WIN_VALUE = 10000;   // Used by MinMaxAI
     constexpr int LOSE_VALUE = -10000; // Used by MinMaxAI
 
-    // Alignment scores (used in position evaluation)
+    // Pattern scores (used in position evaluation) - open vs blocked
+    // Open = both ends free, Half-open = one end free, Blocked = both ends blocked
+    constexpr int LIVE_FOUR = 100000;     // _XXXX_ : forced win next move
+    constexpr int RUSH_FOUR = 5000;       // OXXXX_ : one way to complete
+    constexpr int LIVE_THREE = 4000;      // _XXX__ or _X_XX_ : creates open-four next
+    constexpr int RUSH_THREE = 400;       // OXXX__ : only one dangerous extension
+    constexpr int LIVE_TWO = 200;         // __XX__ : future potential
+    constexpr int RUSH_TWO = 30;          // OXX___ : limited potential
+
+    // Legacy alignment scores (kept for compatibility)
     constexpr int ALIGNMENT_4 = 1500;
     constexpr int ALIGNMENT_3 = 500;
     constexpr int ALIGNMENT_2 = 50;

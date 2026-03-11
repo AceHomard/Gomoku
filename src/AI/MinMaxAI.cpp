@@ -78,12 +78,15 @@ Position MinMaxAI::makeMove(const Board& board) {
         return validMoves[0];
     }
 
+    // Use a mutable copy for make/unmake throughout the search tree
+    Board searchBoard = board;
+
     // IMMEDIATE WIN CHECK: before entering search, check if any move wins instantly
-    // This runs once at root level only (not in the search tree)
     for (const Position& move : validMoves) {
-        Board tempBoard = board;
-        tempBoard.placePiece(move.x, move.y, color);
-        if (tempBoard.checkWinFast(color)) {
+        MoveUndo undo = searchBoard.makeMove(move.x, move.y, color);
+        bool wins = searchBoard.checkCaptureWin(color) || searchBoard.checkAlignment(move.x, move.y, color);
+        searchBoard.unmakeMove(undo);
+        if (wins) {
             LOG_INFO("Immediate win detected at (" << move.x << "," << move.y << ")");
             return move;
         }
@@ -114,27 +117,34 @@ Position MinMaxAI::makeMove(const Board& board) {
         bool completedIteration = true;
 
         for (const Position& move : validMoves) {
-            Board tempBoard = board;
-            if (tempBoard.placePiece(move.x, move.y, color)) {
-                int value = alphabeta(tempBoard, currentDepth - 1,
-                                    std::numeric_limits<int>::min(),
-                                    std::numeric_limits<int>::max(),
-                                    false);
+            MoveUndo undo = searchBoard.makeMove(move.x, move.y, color);
 
-                // If time expired during search, this result is unreliable
-                if (timeExpired) {
-                    completedIteration = false;
-                    break;
-                }
+            int value;
+            // LOCAL win check at root: if this move wins, no need to search deeper
+            if (searchBoard.checkCaptureWin(color) || searchBoard.checkAlignment(move.x, move.y, color)) {
+                value = WIN_VALUE + currentDepth;
+            } else {
+                value = alphabeta(searchBoard, currentDepth - 1,
+                                std::numeric_limits<int>::min(),
+                                std::numeric_limits<int>::max(),
+                                false);
+            }
 
-                if (debugMode) {
-                    logNode(currentDepth, move, value, true);
-                }
+            searchBoard.unmakeMove(undo);
 
-                if (value > currentBestValue) {
-                    currentBestValue = value;
-                    currentBestMove = move;
-                }
+            // If time expired during search, this result is unreliable
+            if (timeExpired) {
+                completedIteration = false;
+                break;
+            }
+
+            if (debugMode) {
+                logNode(currentDepth, move, value, true);
+            }
+
+            if (value > currentBestValue) {
+                currentBestValue = value;
+                currentBestMove = move;
             }
         }
 
@@ -176,26 +186,13 @@ Position MinMaxAI::makeMove(const Board& board) {
     return bestMove;
 }
 
-std::vector<Position> MinMaxAI::generateMoves(const Board& board) {
-    return heuristic->getRelevantMoves(board, color);
+std::vector<Position> MinMaxAI::generateMoves(const Board& board, bool fastMode) {
+    return heuristic->getRelevantMoves(board, color, fastMode);
 }
 
 int MinMaxAI::evaluateBoard(const Board& board) {
-    // This function handles ALL evaluations (terminal and non-terminal)
-    // Called from: 1) alphabeta when depth <= 0
-    //              2) alphabeta when game is won/lost
-    //              3) alphabeta when moves.empty()
-
-    // Check terminal states (win/loss) - MUST be done here
-    // Use checkWinFast() which only checks from lastMove position (much faster than full board scan)
-    if (board.checkWinFast(color)) {
-        return WIN_VALUE;
-    }
-    if (board.checkWinFast(getOpponentColor())) {
-        return LOSE_VALUE;
-    }
-
-    // Non-terminal: use heuristic (no longer checks wins - we already did)
+    // Win/loss detection is handled locally after each makeMove in alphabeta().
+    // This function just returns heuristic evaluation.
     return heuristic->evaluatePosition(board, color);
 }
 
@@ -242,27 +239,17 @@ bool MinMaxAI::isTimeUp() const {
     return false;
 }
 
-int MinMaxAI::alphabeta(const Board& board, int depth, int alpha, int beta, bool maximizing) {
+int MinMaxAI::alphabeta(Board& board, int depth, int alpha, int beta, bool maximizing) {
     nodesEvaluated++;
 
     // Time check
     if (isTimeUp()) {
-        return evaluateBoard(board);
+        return heuristic->evaluatePosition(board, color);
     }
 
-    // Check depth limit first (cheapest check)
+    // Leaf node: heuristic only (wins already caught by parent's post-makeMove check)
     if (depth <= 0) {
-        return evaluateBoard(board);
-    }
-
-    // Check for terminal game states (win/loss)
-    // Use checkWinFast() - only checks from last move position instead of scanning entire board
-    if (board.checkWinFast(color) || board.checkWinFast(getOpponentColor())) {
-        int value = evaluateBoard(board);
-        if (debugMode && depth > searchDepth - 3) {
-            LOG_DEBUG(getIndent(searchDepth - depth) << "Terminal win/loss: value=" << value);
-        }
-        return value;
+        return heuristic->evaluatePosition(board, color);
     }
 
     // --- Transposition Table Lookup ---
@@ -291,18 +278,16 @@ int MinMaxAI::alphabeta(const Board& board, int depth, int alpha, int beta, bool
         }
     }
 
-    std::vector<Position> moves = generateMoves(board);
+    std::vector<Position> moves = generateMoves(board, true);
     if (moves.empty()) {
-        return evaluateBoard(board);  // Draw or no legal moves
+        return heuristic->evaluatePosition(board, color);
     }
 
     // TT best move: put it at front if available
     if (ttBestMove.x >= 0) {
         for (size_t i = 1; i < moves.size(); i++) {
             if (moves[i] == ttBestMove) {
-                Position tmp = moves[i];
-                moves.erase(moves.begin() + i);
-                moves.insert(moves.begin(), tmp);
+                std::swap(moves[0], moves[i]);
                 break;
             }
         }
@@ -331,33 +316,32 @@ int MinMaxAI::alphabeta(const Board& board, int depth, int alpha, int beta, bool
         int maxValue = std::numeric_limits<int>::min();
 
         for (const Position& move : moves) {
-            Board tempBoard = board;
-            if (tempBoard.placePiece(move.x, move.y, color)) {
-                int value = alphabeta(tempBoard, depth - 1, alpha, beta, false);
+            MoveUndo undo = board.makeMove(move.x, move.y, color);
 
-                if (debugMode && depth > searchDepth - 3) {
-                    logNode(depth, move, value, maximizing);
-                }
+            // LOCAL win check: only check around last move + capture counter
+            int value;
+            if (board.checkCaptureWin(color) || board.checkAlignment(move.x, move.y, color)) {
+                value = WIN_VALUE + depth; // prefer faster wins
+            } else {
+                value = alphabeta(board, depth - 1, alpha, beta, false);
+            }
 
-                if (value > maxValue) {
-                    maxValue = value;
-                    bestMove = move;
-                }
-                alpha = std::max(alpha, value);
+            board.unmakeMove(undo);
 
-                // Alpha-Beta coupure
-                if (beta <= alpha) {
-                    cutoffsCount++;
-                    // Store killer move
-                    if (depth < (int)killerMoves.size() && !(move == killerMoves[depth][0])) {
-                        killerMoves[depth][1] = killerMoves[depth][0];
-                        killerMoves[depth][0] = move;
-                    }
-                    if (debugMode && depth > searchDepth - 3) {
-                        LOG_DEBUG(getIndent(searchDepth - depth) << "CUTOFF: beta=" << beta << " <= alpha=" << alpha);
-                    }
-                    break;
+            if (value > maxValue) {
+                maxValue = value;
+                bestMove = move;
+            }
+            alpha = std::max(alpha, value);
+
+            if (beta <= alpha) {
+                cutoffsCount++;
+                // Store killer move
+                if (depth < (int)killerMoves.size() && !(move == killerMoves[depth][0])) {
+                    killerMoves[depth][1] = killerMoves[depth][0];
+                    killerMoves[depth][0] = move;
                 }
+                break;
             }
         }
 
@@ -377,40 +361,39 @@ int MinMaxAI::alphabeta(const Board& board, int depth, int alpha, int beta, bool
         CellState opponentColor = (color == BLACK) ? WHITE : BLACK;
 
         for (const Position& move : moves) {
-            Board tempBoard = board;
-            if (tempBoard.placePiece(move.x, move.y, opponentColor)) {
-                int value = alphabeta(tempBoard, depth - 1, alpha, beta, true);
+            MoveUndo undo = board.makeMove(move.x, move.y, opponentColor);
 
-                if (debugMode && depth > searchDepth - 3) {
-                    logNode(depth, move, value, maximizing);
-                }
+            // LOCAL win check for opponent
+            int value;
+            if (board.checkCaptureWin(opponentColor) || board.checkAlignment(move.x, move.y, opponentColor)) {
+                value = LOSE_VALUE - depth; // penalize faster losses
+            } else {
+                value = alphabeta(board, depth - 1, alpha, beta, true);
+            }
 
-                if (value < minValue) {
-                    minValue = value;
-                    bestMove = move;
-                }
-                beta = std::min(beta, value);
+            board.unmakeMove(undo);
 
-                // Alpha-Beta coupure
-                if (beta <= alpha) {
-                    cutoffsCount++;
-                    // Store killer move
-                    if (depth < (int)killerMoves.size() && !(move == killerMoves[depth][0])) {
-                        killerMoves[depth][1] = killerMoves[depth][0];
-                        killerMoves[depth][0] = move;
-                    }
-                    if (debugMode && depth > searchDepth - 3) {
-                        LOG_DEBUG(getIndent(searchDepth - depth) << "CUTOFF: beta=" << beta << " <= alpha=" << alpha);
-                    }
-                    break;
+            if (value < minValue) {
+                minValue = value;
+                bestMove = move;
+            }
+            beta = std::min(beta, value);
+
+            if (beta <= alpha) {
+                cutoffsCount++;
+                // Store killer move
+                if (depth < (int)killerMoves.size() && !(move == killerMoves[depth][0])) {
+                    killerMoves[depth][1] = killerMoves[depth][0];
+                    killerMoves[depth][0] = move;
                 }
+                break;
             }
         }
 
         // --- Store in Transposition Table ---
         TTFlag flag;
-        if (minValue >= beta) flag = TT_LOWERBOUND;      // Failed high (from min's perspective: didn't get below beta → lower bound for parent)
-        else if (minValue <= originalAlpha) flag = TT_UPPERBOUND;  // Failed low
+        if (minValue >= beta) flag = TT_LOWERBOUND;
+        else if (minValue <= originalAlpha) flag = TT_UPPERBOUND;
         else flag = TT_EXACT;
 
         if (transpositionTable.size() < MAX_TT_SIZE) {
@@ -420,4 +403,3 @@ int MinMaxAI::alphabeta(const Board& board, int depth, int alpha, int beta, bool
         return minValue;
     }
 }
-

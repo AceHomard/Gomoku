@@ -88,11 +88,11 @@ protected:
     // Core minimax algorithm
     int minimax(const Board& board, int depth, bool maximizing);
 
-    // Alpha-Beta optimized algorithm
-    int alphabeta(const Board& board, int depth, int alpha, int beta, bool maximizing);
+    // Alpha-Beta optimized algorithm (uses make/unmake for performance)
+    int alphabeta(Board& board, int depth, int alpha, int beta, bool maximizing);
 
-    // Move generation
-    std::vector<Position> generateMoves(const Board& board);
+    // Move generation (fastMode=true skips expensive validation for inner search nodes)
+    std::vector<Position> generateMoves(const Board& board, bool fastMode = false);
 
     // Board evaluation
     int evaluateBoard(const Board& board);

@@ -11,6 +11,7 @@
 /* ************************************************************************** */
 
 #include "Game/Board.hpp"
+#include "Debug.hpp"
 #include <string>
 #include <iostream>
 #include <random>
@@ -143,6 +144,74 @@ bool Board::placePiece(int x, int y, CellState player) {
     }
     
     return true;
+}
+
+MoveUndo Board::makeMove(int x, int y, CellState player) {
+    MoveUndo undo;
+    undo.x = x;
+    undo.y = y;
+    undo.player = player;
+    undo.capturedColor = getOpponent(player);
+    undo.capturedCount = 0;
+
+    // Place the stone (update Zobrist hash)
+    zobristHash ^= zobristTable[x][y][EMPTY];
+    zobristHash ^= zobristTable[x][y][player];
+    grid[x][y] = player;
+
+    // Check and execute captures
+    std::vector<Position> captures = checkCaptures(x, y, player);
+    if (!captures.empty()) {
+        undo.capturedStones = captures;
+        undo.capturedCount = captures.size();
+
+        int playerIdx = (player == BLACK) ? 0 : 1;
+        int& capCount = (player == BLACK) ? blackCaptures : whiteCaptures;
+
+        // Remove old capture count from hash
+        zobristHash ^= zobristCaptures[playerIdx][capCount];
+
+        for (const Position& pos : captures) {
+            zobristHash ^= zobristTable[pos.x][pos.y][undo.capturedColor];
+            zobristHash ^= zobristTable[pos.x][pos.y][EMPTY];
+            grid[pos.x][pos.y] = EMPTY;
+        }
+
+        capCount += undo.capturedCount;
+
+        // Add new capture count to hash
+        zobristHash ^= zobristCaptures[playerIdx][capCount];
+    }
+
+    return undo;
+}
+
+void Board::unmakeMove(const MoveUndo& undo) {
+    // Reverse capture count hash update
+    if (undo.capturedCount > 0) {
+        int playerIdx = (undo.player == BLACK) ? 0 : 1;
+        int& capCount = (undo.player == BLACK) ? blackCaptures : whiteCaptures;
+
+        // Remove current capture count from hash
+        zobristHash ^= zobristCaptures[playerIdx][capCount];
+
+        capCount -= undo.capturedCount;
+
+        // Add restored capture count to hash
+        zobristHash ^= zobristCaptures[playerIdx][capCount];
+
+        // Restore captured stones
+        for (const Position& pos : undo.capturedStones) {
+            zobristHash ^= zobristTable[pos.x][pos.y][EMPTY];
+            zobristHash ^= zobristTable[pos.x][pos.y][undo.capturedColor];
+            grid[pos.x][pos.y] = undo.capturedColor;
+        }
+    }
+
+    // Remove the placed stone (reverse Zobrist hash)
+    zobristHash ^= zobristTable[undo.x][undo.y][undo.player];
+    zobristHash ^= zobristTable[undo.x][undo.y][EMPTY];
+    grid[undo.x][undo.y] = EMPTY;
 }
 
 CellState Board::getCell(int x, int y) const {
@@ -289,10 +358,10 @@ std::vector<Position> Board::checkCaptureDirection(int x, int y, int dx, int dy,
             // So actually, the basic pattern check ALREADY ensures exactly 2!
             // Because +3 MUST be player, there can't be 3 consecutive opponents.
 
-            std::cout << "[CaptureCheck] Found valid capture at (" << x << "," << y
+            LOG_DEBUG("[CaptureCheck] Found valid capture at (" << x << "," << y
                       << ") dir=(" << dx << "," << dy << ") capturing ("
                       << (x+dx) << "," << (y+dy) << ") and ("
-                      << (x+2*dx) << "," << (y+2*dy) << ")" << std::endl;
+                      << (x+2*dx) << "," << (y+2*dy) << ")");
             captures.push_back(Position(x + dx, y + dy));
             captures.push_back(Position(x + 2*dx, y + 2*dy));
         }
@@ -304,11 +373,7 @@ std::vector<Position> Board::checkCaptureDirection(int x, int y, int dx, int dy,
 int Board::executeCaptures(const std::vector<Position>& captures) {
     // Verbose logging for captures (useful during debugging/analysis)
     if (!captures.empty()) {
-        std::cout << "[Capture] Removing " << captures.size() << " stones:";
-        for (const Position& p : captures) {
-            std::cout << " (" << p.x << "," << p.y << ")";
-        }
-        std::cout << std::endl;
+        LOG_DEBUG("[Capture] Removing " << captures.size() << " stones");
     }
 
     for (const Position& pos : captures) {
