@@ -78,6 +78,17 @@ Position MinMaxAI::makeMove(const Board& board) {
         return validMoves[0];
     }
 
+    // IMMEDIATE WIN CHECK: before entering search, check if any move wins instantly
+    // This runs once at root level only (not in the search tree)
+    for (const Position& move : validMoves) {
+        Board tempBoard = board;
+        tempBoard.placePiece(move.x, move.y, color);
+        if (tempBoard.checkWinFast(color)) {
+            LOG_INFO("Immediate win detected at (" << move.x << "," << move.y << ")");
+            return move;
+        }
+    }
+
     Position bestMove = validMoves[0];
     int bestValue = std::numeric_limits<int>::min();
     inGuaranteedDepth = false;
