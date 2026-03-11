@@ -126,6 +126,36 @@ std::vector<Position> Heuristic::getRelevantMoves(const Board& board, CellState 
         moves.push_back(Position(center, center));
     }
 
+    // STEP 1.5: IMMEDIATE WIN/BLOCK DETECTION
+    // Before sorting and filtering, check if any move wins instantly or blocks opponent win
+    // This ensures winning moves are NEVER missed due to MAX_MOVES_PER_LEVEL filtering
+    CellState opponent = (player == BLACK) ? WHITE : BLACK;
+    Position winMove(-1, -1);
+    Position blockMove(-1, -1);
+
+    for (const Position& move : moves) {
+        // Check if this move wins for us
+        Board tempBoard = board;
+        tempBoard.placePiece(move.x, move.y, player);
+        if (tempBoard.checkWinFast(player)) {
+            if (Rules::isValidMove(board, move.x, move.y, player)) {
+                LOG_INFO("Immediate win detected at (" << move.x << "," << move.y << ")");
+                return {move};  // Return ONLY the winning move
+            }
+        }
+
+        // Check if this move blocks opponent's win
+        if (blockMove.x < 0) {
+            Board oppBoard = board;
+            oppBoard.placePiece(move.x, move.y, opponent);
+            if (oppBoard.checkWinFast(opponent)) {
+                if (Rules::isValidMove(board, move.x, move.y, player)) {
+                    blockMove = move;
+                }
+            }
+        }
+    }
+
     // STEP 2: Sort by tactical score (FAST)
     std::sort(moves.begin(), moves.end(), [&board, player, this](const Position& a, const Position& b) {
         return getMoveScore(board, a, player) > getMoveScore(board, b, player);
@@ -136,11 +166,18 @@ std::vector<Position> Heuristic::getRelevantMoves(const Board& board, CellState 
     std::vector<Position> validMoves;
     validMoves.reserve(MAX_MOVES_PER_LEVEL);
 
+    // If we found a critical blocking move, ensure it's included
+    if (blockMove.x >= 0) {
+        validMoves.push_back(blockMove);
+    }
+
     // OPTIMIZATION: Limit validation attempts to avoid performance degradation
     size_t maxAttempts = std::min((size_t)MAX_VALIDATION_ATTEMPTS, moves.size());
 
     for (size_t i = 0; i < maxAttempts; i++) {
         const Position& move = moves[i];
+        // Skip if already added as block move
+        if (blockMove.x >= 0 && move == blockMove) continue;
         if (Rules::isValidMove(board, move.x, move.y, player)) {
             validMoves.push_back(move);
             if (validMoves.size() >= MAX_MOVES_PER_LEVEL) {
@@ -250,10 +287,13 @@ int Heuristic::getMoveScore(const Board& board, const Position& pos, CellState p
         else if (myStones == 1) baseScore = MOVE_THREAT_2;
 
         // Apply simple penalty: immediate adjacency only
-        if (!beforeEmpty && !afterEmpty) {
-            baseScore = 0; // Both sides immediately blocked
-        } else if (!beforeEmpty || !afterEmpty) {
-            baseScore = baseScore / 2; // One side blocked
+        // BUT: never penalize a winning move (5+ in a row doesn't need open ends)
+        if (myStones < 4) {
+            if (!beforeEmpty && !afterEmpty) {
+                baseScore = 0; // Both sides immediately blocked
+            } else if (!beforeEmpty || !afterEmpty) {
+                baseScore = baseScore / 2; // One side blocked
+            }
         }
 
         score += baseScore;
@@ -301,10 +341,13 @@ int Heuristic::getMoveScore(const Board& board, const Position& pos, CellState p
         else if (oppStones == 1) blockScore = MOVE_BLOCK_1;
 
         // Apply simple penalty: immediate adjacency only
-        if (!oppBeforeEmpty && !oppAfterEmpty) {
-            blockScore = 0; // Opponent blocked both sides - low priority
-        } else if (!oppBeforeEmpty || !oppAfterEmpty) {
-            blockScore = blockScore / 2; // One side blocked
+        // BUT: never penalize blocking a winning alignment (4+ opponent stones)
+        if (oppStones < 4) {
+            if (!oppBeforeEmpty && !oppAfterEmpty) {
+                blockScore = 0; // Opponent blocked both sides - low priority
+            } else if (!oppBeforeEmpty || !oppAfterEmpty) {
+                blockScore = blockScore / 2; // One side blocked
+            }
         }
 
         score += blockScore;
