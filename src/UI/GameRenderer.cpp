@@ -462,8 +462,9 @@ void GameRenderer::renderControls() {
                           "2 - Human vs AI\n"
                           "3 - AI vs AI\n"
                           "P/Space - Pause/Resume\n"
+                          "S - Suggestion (HvH only)\n"
                           "ESC - Quit";
-    
+
     controlsHelpText.setString(controls);
     controlsHelpText.setPosition(sf::Vector2f(window->getSize().x - 240, window->getSize().y - 200));
     window->draw(controlsHelpText);
