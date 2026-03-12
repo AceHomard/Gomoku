@@ -67,14 +67,13 @@ static sf::Font& getDummyFont() {
 }
 
 
-// Private method implementations
 UITheme UITheme::createDefaultTheme() {
     UITheme theme;
     
     // Board colors
-    theme.boardBackground = sf::Color(210, 180, 140);  // Tan
-    theme.gridLines = sf::Color(101, 67, 33);          // Dark brown
-    theme.boardBorder = sf::Color(139, 69, 19);        // Saddle brown
+    theme.boardBackground = sf::Color(210, 180, 140);
+    theme.gridLines = sf::Color(101, 67, 33);  
+    theme.boardBorder = sf::Color(139, 69, 19);  
     
     // Stone colors
     theme.blackStone = sf::Color(20, 20, 20);
@@ -193,7 +192,6 @@ bool GameRenderer::loadFonts(const std::string& mainFontPath, const std::string&
     fontsLoaded = mainLoaded || monoLoaded;
     
     if (fontsLoaded) {
-        // Use main font as fallback for mono if needed
         if (!monoLoaded && mainLoaded) {
             monoFont = mainFont;
             monoLoaded = true;
@@ -216,20 +214,17 @@ void GameRenderer::setGame(const Game* game) {
 
 void GameRenderer::setBoard(const Board* board) {
     boardRef = board;
-    createStonePieces(); // Recreate stone sprites when board changes
+    createStonePieces();
 }
 
 void GameRenderer::calculateLayout(int windowWidth, int windowHeight) {
-    // Calculate optimal board layout
     const int PANEL_WIDTH = 250;
     const int STATUS_HEIGHT = 60;
     const int MARGIN = 20;
     
-    // Available space for board
     int boardAreaWidth = windowWidth - PANEL_WIDTH - 2 * MARGIN;
     int boardAreaHeight = windowHeight - STATUS_HEIGHT - 2 * MARGIN;
     
-    // Calculate cell size to fit board
     float optimalCellSize = std::min(
         static_cast<float>(boardAreaWidth) / BOARD_SIZE,
         static_cast<float>(boardAreaHeight) / BOARD_SIZE
@@ -237,14 +232,12 @@ void GameRenderer::calculateLayout(int windowWidth, int windowHeight) {
     
     cellSize = std::max(20.0f, std::min(40.0f, optimalCellSize));
     
-    // Center the board
     float boardWidth = BOARD_SIZE * cellSize;
     float boardHeight = BOARD_SIZE * cellSize;
     
     boardOffset.x = (boardAreaWidth - boardWidth) / 2 + MARGIN;
     boardOffset.y = (boardAreaHeight - boardHeight) / 2 + MARGIN;
     
-    // Position UI panels
     leftPanel.setSize(sf::Vector2f(PANEL_WIDTH, windowHeight));
     leftPanel.setPosition(sf::Vector2f(windowWidth - PANEL_WIDTH, 0));
     
@@ -262,25 +255,21 @@ void GameRenderer::setBoardParameters(const sf::Vector2f& offset, float size) {
 void GameRenderer::render() {
     if (!window) return;
     
-    // Don't clear or display here - let the main game loop handle it
     renderBoard();
     renderStones();
     
-    // Draw winning alignment highlights (if game is over and there's an alignment win)
     if (gameRef && gameRef->isGameOver() && !gameRef->getWinningAlignment().empty()) {
         for (const sf::CircleShape& highlight : winningAlignmentHighlights) {
             window->draw(highlight);
         }
     }
     
-    // Draw current move highlight (e.g., suggestion) above stones but below UI
     if (moveHighlight.getOutlineThickness() > 0 && moveHighlight.getOutlineColor().a > 0) {
         window->draw(moveHighlight);
     }
     renderHoverPreview();
     renderUI();
     
-    // Update and render animations
     updateAnimations();
     for (auto& animation : activeAnimations) {
         animation->draw(*window, boardOffset, cellSize);
@@ -288,7 +277,6 @@ void GameRenderer::render() {
 }
 
 void GameRenderer::renderBoard() {
-    // Draw board background - adjusted to fit the actual grid lines
     float boardWidth = (BOARD_SIZE - 1) * cellSize + 2 * currentTheme.panelBorderThickness;
     float boardHeight = (BOARD_SIZE - 1) * cellSize + 2 * currentTheme.panelBorderThickness;
     
@@ -320,7 +308,6 @@ void GameRenderer::renderStones() {
 }
 
 void GameRenderer::renderUI() {
-    // Draw panels
     drawPanel(leftPanel);
     drawPanel(statusPanel);
     
@@ -328,9 +315,7 @@ void GameRenderer::renderUI() {
     renderStatusBar();
     renderControls();
 
-    // Render color selection panel whenever in Human vs AI mode
     if (gameRef && gameRef->getGameMode() == HUMAN_VS_AI && fontsLoaded) {
-        // Panel geometry
         float panelWidth = 220.0f;
         float panelHeight = 120.0f;
         float panelX = window->getSize().x - panelWidth - 20.0f;
@@ -343,20 +328,17 @@ void GameRenderer::renderUI() {
         colorSelectPanel.setOutlineThickness(1.0f);
         window->draw(colorSelectPanel);
 
-        // Title
         colorSelectTitle = sf::Text(mainFont, "Choose your color", 14);
         colorSelectTitle.setFillColor(currentTheme.primaryText);
         colorSelectTitle.setPosition(sf::Vector2f(panelX + 12, panelY + 10));
         window->draw(colorSelectTitle);
 
-        // Buttons
-        float btnWidth = (panelWidth - 30.0f) / 2.0f; // two buttons with spacing
+        float btnWidth = (panelWidth - 30.0f) / 2.0f;
         float btnHeight = 34.0f;
         float btnY = panelY + 60.0f;
         float btnX1 = panelX + 10.0f;
         float btnX2 = btnX1 + btnWidth + 10.0f;
 
-        // Mouse position for hover
         sf::Vector2i mousePos = sf::Mouse::getPosition(*window);
         sf::Vector2f mpos(static_cast<float>(mousePos.x), static_cast<float>(mousePos.y));
 
@@ -396,7 +378,6 @@ void GameRenderer::renderUI() {
         }
         window->draw(whiteButtonLabel);
 
-        // Cache hit rectangles
         blackButtonRect = sf::FloatRect(blackButtonShape.getPosition(), blackButtonShape.getSize());
         whiteButtonRect = sf::FloatRect(whiteButtonShape.getPosition(), whiteButtonShape.getSize());
     }
@@ -458,7 +439,7 @@ void GameRenderer::renderControls() {
                           "ESC - Quit";
     
     controlsHelpText.setString(controls);
-    // Position below color selection panel (Y=440) if in HvA mode, otherwise higher up
+
     float controlsY = (gameRef && gameRef->getGameMode() == HUMAN_VS_AI) ? 460.0f : 320.0f;
     controlsHelpText.setPosition(sf::Vector2f(window->getSize().x - 240, controlsY));
     window->draw(controlsHelpText);
@@ -467,7 +448,7 @@ void GameRenderer::renderControls() {
 int GameRenderer::hitTestColorSelection(int mouseX, int mouseY) const {
     if (!window) return 0;
     if (!gameRef || gameRef->getGameMode() != HUMAN_VS_AI) return 0;
-    // Prefer cached rectangles set during render; if not valid, compute them
+
     sf::FloatRect blackRect = blackButtonRect;
     sf::FloatRect whiteRect = whiteButtonRect;
 
@@ -489,7 +470,6 @@ int GameRenderer::hitTestColorSelection(int mouseX, int mouseY) const {
         whiteRect = sf::FloatRect(sf::Vector2f(btnX2, btnY), sf::Vector2f(btnWidth, btnHeight));
     }
 
-    // Slightly inflate the hit areas to be more forgiving
     auto inflate = [](sf::FloatRect r, float pad) {
         r.position.x -= pad; r.position.y -= pad;
         r.size.x += pad * 2.f; r.size.y += pad * 2.f;
@@ -507,7 +487,6 @@ int GameRenderer::hitTestColorSelection(int mouseX, int mouseY) const {
 void GameRenderer::addAnimation(StoneAnimation::Type type, const Position& pos, float duration) {
     auto animation = std::make_unique<StoneAnimation>(type, pos, duration);
     
-    // Set appropriate colors based on animation type and position
     if (boardRef) {
         CellState cell = boardRef->getCell(pos.x, pos.y);
         if (cell == BLACK) {
@@ -522,12 +501,10 @@ void GameRenderer::addAnimation(StoneAnimation::Type type, const Position& pos, 
 }
 
 void GameRenderer::updateAnimations() {
-    // Update all active animations
     for (auto& animation : activeAnimations) {
         animation->update();
     }
     
-    // Remove completed animations
     activeAnimations.erase(
         std::remove_if(activeAnimations.begin(), activeAnimations.end(),
                       [](const std::unique_ptr<StoneAnimation>& anim) {
@@ -556,8 +533,7 @@ void GameRenderer::highlightWinningAlignment(const std::vector<Position>& alignm
         sf::CircleShape highlight;
         highlight.setRadius(cellSize * 0.5f);
         highlight.setOrigin(sf::Vector2f(cellSize * 0.5f, cellSize * 0.5f));
-        highlight.setFillColor(sf::Color(color.r, color.g, color.b, 100)); // Semi-transparent fill
-        highlight.setOutlineColor(color);
+        highlight.setFillColor(sf::Color(color.r, color.g, color.b, 100));
         highlight.setOutlineThickness(4.0f);
         
         sf::Vector2f screenPos(boardOffset.x + pos.x * cellSize,
@@ -575,7 +551,6 @@ bool GameRenderer::isPositionOnBoard(int mouseX, int mouseY) const {
 }
 
 Position GameRenderer::getBoardPosition(int mouseX, int mouseY) const {
-    // Use rounding to snap to nearest intersection
     float relX = static_cast<float>(mouseX) - boardOffset.x;
     float relY = static_cast<float>(mouseY) - boardOffset.y;
     float normX = relX / cellSize;
@@ -584,7 +559,6 @@ Position GameRenderer::getBoardPosition(int mouseX, int mouseY) const {
     int boardX = static_cast<int>(std::floor(normX + 0.5f));
     int boardY = static_cast<int>(std::floor(normY + 0.5f));
 
-    // Bounds based on actual grid span (0 .. BOARD_SIZE-1)
     boardX = std::max(0, std::min(BOARD_SIZE - 1, boardX));
     boardY = std::max(0, std::min(BOARD_SIZE - 1, boardY));
 
@@ -592,13 +566,10 @@ Position GameRenderer::getBoardPosition(int mouseX, int mouseY) const {
 }
 
 void GameRenderer::clearHighlights() {
-    // Hide the single-move highlight circle
     moveHighlight.setOutlineThickness(0);
-    // Clear winning alignment highlights
     winningAlignmentHighlights.clear();
 }
 
-// Private method implementations
 void GameRenderer::setupBoard() {
     createGridLines();
     moveHighlight.setRadius(cellSize * 0.45f);
@@ -635,10 +606,8 @@ void GameRenderer::createGridLines() {
     gridLines.clear();
     hoshiPoints.clear();
     
-    // Calculate proper line positions for Go board (lines start and end at edges)
     float lineLength = (BOARD_SIZE - 1) * cellSize;
     
-    // Horizontal lines - start from edge to edge
     for (int i = 0; i < BOARD_SIZE; ++i) {
         sf::RectangleShape line;
         line.setSize(sf::Vector2f(lineLength, currentTheme.boardLineThickness));
@@ -647,7 +616,6 @@ void GameRenderer::createGridLines() {
         gridLines.push_back(line);
     }
     
-    // Vertical lines - start from edge to edge
     for (int i = 0; i < BOARD_SIZE; ++i) {
         sf::RectangleShape line;
         line.setSize(sf::Vector2f(currentTheme.boardLineThickness, lineLength));
@@ -656,9 +624,7 @@ void GameRenderer::createGridLines() {
         gridLines.push_back(line);
     }
     
-    // Add hoshi points (star markers) for 19x19 Go board
     if (BOARD_SIZE == 19) {
-        // Traditional hoshi positions for 19x19 board
         int hoshiPositions[9][2] = {
             {3, 3}, {3, 9}, {3, 15},
             {9, 3}, {9, 9}, {9, 15},
@@ -689,7 +655,6 @@ void GameRenderer::drawBoardGrid() {
         window->draw(line);
     }
     
-    // Draw hoshi points (star markers)
     for (const auto& hoshi : hoshiPoints) {
         window->draw(hoshi);
     }
@@ -701,14 +666,12 @@ void GameRenderer::drawCoordinates() {
     sf::Text coordText(monoFont, "", 10);
     coordText.setFillColor(currentTheme.secondaryText);
     
-    // Column labels (1-19)
     for (int i = 0; i < BOARD_SIZE; ++i) {
         coordText.setString(std::to_string(i));
         coordText.setPosition(sf::Vector2f(boardOffset.x + i * cellSize - 5, boardOffset.y - 20));
         window->draw(coordText);
     }
 
-    // Row labels (1-19)
     for (int i = 0; i < BOARD_SIZE; ++i) {
         coordText.setString(std::to_string(i));
         coordText.setPosition(sf::Vector2f(boardOffset.x - 20, boardOffset.y + i * cellSize - 8));
@@ -765,7 +728,6 @@ void GameRenderer::updateStatusText() {
         statusText.setString("Ready");
         return;
     }
-    // Single source of truth: delegate to Game's statusMessage
     statusText.setString(gameRef->getStatusMessage());
 }
 
@@ -784,7 +746,7 @@ void GameRenderer::updateTurnCountText() {
     if (!gameRef) return;
 
     int totalMoves = gameRef->getTotalMoves();
-    int turnNumber = (totalMoves / 2) + 1;  // Tour = 2 coups (1 noir + 1 blanc)
+    int turnNumber = (totalMoves / 2) + 1; 
 
     std::ostringstream oss;
     oss << "Turn: " << turnNumber << " (Move: " << totalMoves << ")";
@@ -804,7 +766,6 @@ void GameRenderer::updateCurrentPlayerText() {
         playerInfo += " (AI)";
     }
 
-    // Add color information
     std::string colorName = (current->getColor() == BLACK) ? "Black" : "White";
     playerInfo += " - " + colorName;
 

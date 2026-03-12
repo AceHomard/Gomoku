@@ -5,7 +5,6 @@
 #include <algorithm>
 #include <numeric>
 
-// Helper function for SFML 3 compatibility
 static sf::Font& getDummyFont() {
     static sf::Font dummyFont;
     static bool initialized = false;
@@ -32,8 +31,6 @@ Timer::Timer()
 {
     setupDefaultFont();
     
-    // Setup text objects will be done when font is loaded
-    
     timerText.setCharacterSize(fontSize + 4);
     averageText.setCharacterSize(fontSize);
     statusText.setCharacterSize(fontSize - 2);
@@ -49,10 +46,8 @@ Timer::~Timer() {
 }
 
 void Timer::setupDefaultFont() {
-    // Try to create a basic bitmap font or use system defaults
     fontLoaded = false;
     
-    // On most systems, we can try some common font paths
     std::vector<std::string> fontPaths = {
         "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
         "/usr/share/fonts/TTF/DejaVuSans.ttf",
@@ -68,7 +63,6 @@ void Timer::setupDefaultFont() {
         }
     }
     
-    // If no font loaded, the timer will still work but without text rendering
     if (!fontLoaded) {
         std::cerr << "Warning: Could not load any fonts. Timer will work but text won't be displayed." << std::endl;
     }
@@ -103,11 +97,9 @@ void Timer::stopMoveTimer() {
         auto duration = std::chrono::duration<double>(endTime - moveStartTime);
         currentMoveTime = duration.count();
         
-        // Add to history
         moveHistory.push_back(currentMoveTime);
         moveCount++;
         
-        // Calculate statistics
         calculateStatistics();
         
         isRunning = false;
@@ -178,7 +170,6 @@ void Timer::update() {
 void Timer::updateTexts() {
     if (!fontLoaded) return;
     
-    // Current move timer (most important - MANDATORY display)
     std::string currentTimeStr;
     if (isRunning) {
         currentTimeStr = "AI thinking: " + getFormattedCurrentTime();
@@ -193,14 +184,12 @@ void Timer::updateTexts() {
     
     timerText.setString(currentTimeStr);
     
-    // Average time
     if (moveCount > 0) {
         averageText.setString("Average: " + getFormattedAverageTime() + " (" + std::to_string(moveCount) + " moves)");
     } else {
         averageText.setString("No moves yet");
     }
     
-    // Status information
     if (totalTime > 0.0) {
         statusText.setString("Total: " + getFormattedTotalTime());
     } else {
@@ -212,16 +201,12 @@ std::string Timer::formatTime(double seconds) const {
     std::stringstream ss;
     
     if (seconds < 1.0) {
-        // Show milliseconds for sub-second times
         ss << std::fixed << std::setprecision(0) << (seconds * 1000) << "ms";
     } else if (seconds < 10.0) {
-        // Show two decimal places for times under 10 seconds
         ss << std::fixed << std::setprecision(2) << seconds << "s";
     } else if (seconds < 60.0) {
-        // Show one decimal place for times under 1 minute
         ss << std::fixed << std::setprecision(1) << seconds << "s";
     } else {
-        // Show minutes:seconds for longer times
         int minutes = static_cast<int>(seconds) / 60;
         int secs = static_cast<int>(seconds) % 60;
         ss << minutes << ":" << std::setfill('0') << std::setw(2) << secs;
@@ -242,7 +227,6 @@ void Timer::calculateStatistics() {
 }
 
 sf::Color Timer::getTimerColor(double time) const {
-    // Color coding: Green (fast) -> Yellow (medium) -> Red (slow)
     if (time < 0.5) {
         return sf::Color(0, 200, 0);  // Green - very fast
     } else if (time < 1.0) {
@@ -262,7 +246,6 @@ void Timer::draw(sf::RenderWindow& window) {
 
 void Timer::drawCompact(sf::RenderWindow& window, float x, float y) {
     if (!fontLoaded) {
-        // Draw a simple colored rectangle to indicate timer status
         sf::RectangleShape indicator(sf::Vector2f(100, 20));
         indicator.setPosition(sf::Vector2f(x, y));
         if (isRunning) {
@@ -274,13 +257,11 @@ void Timer::drawCompact(sf::RenderWindow& window, float x, float y) {
         return;
     }
     
-    // Just show current timer
     timerText.setPosition(sf::Vector2f(x, y));
     window.draw(timerText);
 }
 
 void Timer::drawDetailed(sf::RenderWindow& window, float x, float y, float width, float height) {
-    // Draw background panel
     sf::RectangleShape background(sf::Vector2f(width, height));
     background.setPosition(sf::Vector2f(x - 5, y - 5));
     background.setFillColor(sf::Color(250, 250, 250, 200));
@@ -289,7 +270,6 @@ void Timer::drawDetailed(sf::RenderWindow& window, float x, float y, float width
     window.draw(background);
     
     if (!fontLoaded) {
-        // Fallback: just draw status rectangles
         sf::RectangleShape statusRect(sf::Vector2f(width - 10, 15));
         statusRect.setPosition(sf::Vector2f(x, y));
         if (isRunning) {
@@ -301,7 +281,6 @@ void Timer::drawDetailed(sf::RenderWindow& window, float x, float y, float width
         return;
     }
     
-    // Draw text elements
     float yOffset = y;
     
     timerText.setPosition(sf::Vector2f(x, yOffset));

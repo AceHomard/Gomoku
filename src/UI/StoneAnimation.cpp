@@ -35,18 +35,15 @@ void StoneAnimation::update() {
     
     switch (animationType) {
         case PLACE: {
-            // Scale animation for stone placement
             float scale = UIUtils::easeOut(progress);
             animatedStone.setScale(sf::Vector2f(scale, scale));
             
-            // Color transition
             sf::Color currentColor = UIUtils::blendColors(originalColor, targetColor, progress);
             animatedStone.setFillColor(currentColor);
             break;
         }
         
         case CAPTURE: {
-            // Shrink and fade animation for captures
             float scale = 1.0f - UIUtils::easeIn(progress);
             animatedStone.setScale(sf::Vector2f(scale, scale));
             
