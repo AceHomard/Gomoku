@@ -14,6 +14,7 @@
 #define GAME_HPP
 
 #include "../Gomoku.hpp"
+#include "../Debug.hpp"
 #include "Board.hpp"
 #include "IPlayer.hpp"
 #include "Rules.hpp"
@@ -22,10 +23,17 @@
 #include "../UI/GameRenderer.hpp"
 #include <memory>
 #include <vector>
+#ifdef DEBUG_VISU
+#include <thread>
+#include <atomic>
+#endif
 
 // Forward declarations
 class HumanPlayer;
 class AIPlayer;
+#ifdef DEBUG_VISU
+class DebugVisualizer;
+#endif
 
 // Move history record for replay system
 struct MoveRecord {
@@ -91,6 +99,15 @@ private:
     // UI elements
     float cellSize;
     sf::Vector2f boardOffset;
+
+#ifdef DEBUG_VISU
+    // Async AI thread for non-blocking search during debug visualization
+    std::thread aiThread;
+    std::atomic<bool> aiSearchRunning{false};
+    std::atomic<bool> aiSearchDone{false};
+    Position aiResult{-1, -1};
+    std::unique_ptr<DebugVisualizer> debugVisualizer;
+#endif
 
 public:
     Game();

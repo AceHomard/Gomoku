@@ -16,6 +16,9 @@
 #include "AI/MinMaxAI.hpp"
 #include "UI/GameRenderer.hpp"
 #include "Game/Rules.hpp"
+#ifdef DEBUG_VISU
+#include "Debug/DebugVisualizer.hpp"
+#endif
 #include <iostream>
 #include <sstream>
 #include <algorithm>
@@ -70,10 +73,35 @@ Game::Game()
     aiTimer->loadFont();
 
     calculateBoardDimensions();
+
+#ifdef DEBUG_VISU
+    debugVisualizer = std::make_unique<DebugVisualizer>();
+    debugVisualizer->initialize();
+#endif
+
     startNewGame(HUMAN_VS_HUMAN);  // Default: Human vs Human (press 2 for AI mode)
 }
 
 Game::~Game() {
+#ifdef DEBUG_VISU
+    // Signal AI thread to stop and wait
+    if (aiSearchRunning) {
+        // Try to stop the AI
+        if (currentPlayer) {
+            AIPlayer* aiPlayer = dynamic_cast<AIPlayer*>(currentPlayer);
+            if (aiPlayer) {
+                MinMaxAI* minmax = dynamic_cast<MinMaxAI*>(currentPlayer);
+                if (minmax) minmax->requestStop();
+            }
+        }
+    }
+    if (aiThread.joinable()) {
+        aiThread.join();
+    }
+    if (debugVisualizer) {
+        debugVisualizer->close();
+    }
+#endif
 }
 
 bool Game::initializeWindow() {
@@ -108,8 +136,18 @@ void Game::run() {
     while (running && window.isOpen()) {
         try {
             handleEvents();
+#ifdef DEBUG_VISU
+            if (debugVisualizer && debugVisualizer->isOpen()) {
+                debugVisualizer->handleEvents();
+            }
+#endif
             update();
             render();
+#ifdef DEBUG_VISU
+            if (debugVisualizer && debugVisualizer->isOpen()) {
+                debugVisualizer->render();
+            }
+#endif
         } catch (const std::bad_alloc&) {
             // Enter a degraded mode to avoid quitting unexpectedly
             std::cerr << "[Game] bad_alloc caught - pausing game to recover" << std::endl;
@@ -147,6 +185,9 @@ void Game::handleWindowEvents(const sf::Event& event) {
     if (event.is<sf::Event::Closed>()) {
         running = false;
         window.close();
+#ifdef DEBUG_VISU
+        if (debugVisualizer) debugVisualizer->close();
+#endif
     }
 }
 
@@ -308,10 +349,59 @@ void Game::update() {
 }
 
 void Game::handleAIMove() {
-    // Start AI timer (MANDATORY requirement)
+#ifdef DEBUG_VISU
+    // Async mode: launch AI in separate thread so game loop keeps rendering
+    if (!aiSearchRunning) {
+        aiSearchRunning = true;
+        aiSearchDone = false;
+        startAITimer();
+
+        if (currentPlayer && currentPlayer->getType() == AI) {
+            AIPlayer* aiPlayer = dynamic_cast<AIPlayer*>(currentPlayer);
+            if (aiPlayer) {
+                aiTimer->setAIName(currentPlayer->getName());
+                aiTimer->setSearchDepth(aiPlayer->getSearchDepth());
+            }
+        }
+
+        // Copy the board for the AI thread (make/unmake mutates it)
+        Board searchBoardCopy = board;
+        IPlayer* aiPlayer = currentPlayer;
+
+        if (aiThread.joinable()) {
+            aiThread.join();
+        }
+
+        aiThread = std::thread([this, searchBoardCopy, aiPlayer]() mutable {
+            aiResult = aiPlayer->makeMove(searchBoardCopy);
+            aiSearchDone = true;
+        });
+    }
+
+    if (aiSearchDone) {
+        if (aiThread.joinable()) {
+            aiThread.join();
+        }
+        stopAITimer();
+
+        Position move = aiResult;
+        aiSearchRunning = false;
+        aiSearchDone = false;
+
+        if (move.x >= 0 && move.y >= 0) {
+            processMove(move, currentPlayer);
+            if (renderer) {
+                renderer->addAnimation(StoneAnimation::PLACE, move, 0.3f);
+            }
+        } else {
+            std::cout << "[Game] AI cannot find valid move - ending game as draw" << std::endl;
+            endGame(EMPTY);
+        }
+    }
+#else
+    // Synchronous mode (original behavior)
     startAITimer();
-    
-    // Update AI timer with current AI player info
+
     if (currentPlayer && currentPlayer->getType() == AI) {
         AIPlayer* aiPlayer = dynamic_cast<AIPlayer*>(currentPlayer);
         if (aiPlayer) {
@@ -319,24 +409,20 @@ void Game::handleAIMove() {
             aiTimer->setSearchDepth(aiPlayer->getSearchDepth());
         }
     }
-    
-    Position move = currentPlayer->makeMove(board);
 
-    // Stop AI timer and record the move time
+    Position move = currentPlayer->makeMove(board);
     stopAITimer();
 
     if (move.x >= 0 && move.y >= 0) {
         processMove(move, currentPlayer);
-
-        // Add placement animation
         if (renderer) {
             renderer->addAnimation(StoneAnimation::PLACE, move, 0.3f);
         }
     } else {
-        // AI couldn't find a valid move - end game as draw
         std::cout << "[Game] AI cannot find valid move - ending game as draw" << std::endl;
-        endGame(EMPTY);  // Draw
+        endGame(EMPTY);
     }
+#endif
 }
 
 void Game::updateGameState() {
@@ -686,7 +772,7 @@ void Game::showMoveSuggestion() {
 
 Position Game::getAISuggestion(CellState player) {
     // Create a temporary AI with shallow depth for quick suggestion
-    MinMaxAI tempAI(player, 4); // Depth 4 for quick response
+    MinMaxAI tempAI(player, 10);
 
     // Get AI suggestion
     Position suggestion = tempAI.makeMove(board);

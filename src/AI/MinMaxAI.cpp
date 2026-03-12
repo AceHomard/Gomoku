@@ -14,6 +14,9 @@
 #include "Game/Rules.hpp"
 #include "Game/Constants.hpp"
 #include "Debug.hpp"
+#ifdef DEBUG_VISU
+#include "Debug/SearchDataCollector.hpp"
+#endif
 #include <algorithm>
 #include <limits>
 #include <iostream>
@@ -38,7 +41,12 @@ Position MinMaxAI::makeMove(const Board& board) {
     // Reset counters
     nodesEvaluated = 0;
     cutoffsCount = 0;
+#ifdef DEBUG_VISU
+    shouldStop = false;
+#endif
     auto startTime = std::chrono::high_resolution_clock::now();
+
+    VISU_HOOK(SearchDataCollector::instance().onSearchStart(searchDepth));
 
     std::vector<Position> moves = generateMoves(board);
     if (moves.empty()) {
@@ -66,6 +74,12 @@ Position MinMaxAI::makeMove(const Board& board) {
         }
 
         foundValidMove = true;
+
+        VISU_HOOK(SearchDataCollector::instance().onNodeEnter(
+            move, searchDepth,
+            std::numeric_limits<int>::min(),
+            std::numeric_limits<int>::max(), true));
+
         MoveUndo undo = searchBoard.makeMove(move.x, move.y, color);
 
         int value;
@@ -81,6 +95,8 @@ Position MinMaxAI::makeMove(const Board& board) {
 
         searchBoard.unmakeMove(undo);
 
+        VISU_HOOK(SearchDataCollector::instance().onNodeExit(value, false));
+
         if (debugMode) {
             logNode(searchDepth, move, value, true);
         }
@@ -88,6 +104,7 @@ Position MinMaxAI::makeMove(const Board& board) {
         if (value > bestValue) {
             bestValue = value;
             bestMove = move;
+            VISU_HOOK(SearchDataCollector::instance().onBestMoveUpdate(bestMove, bestValue));
         }
     }
 
@@ -99,6 +116,10 @@ Position MinMaxAI::makeMove(const Board& board) {
 
     auto endTime = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime);
+
+    VISU_HOOK(SearchDataCollector::instance().onSearchComplete(
+        bestMove, bestValue, nodesEvaluated, cutoffsCount,
+        static_cast<float>(duration.count())));
 
     LOG_INFO("MinMaxAI selected move: (" << bestMove.x << ", " << bestMove.y
               << ") value=" << bestValue);
@@ -144,6 +165,10 @@ void MinMaxAI::logNode(int depth, const Position& move, int value, bool maximizi
 int MinMaxAI::alphabeta(Board& board, int depth, int alpha, int beta, bool maximizing) {
     nodesEvaluated++;
 
+#ifdef DEBUG_VISU
+    if (shouldStop) return 0;
+#endif
+
     // Leaf node: heuristic only (wins already caught by parent's post-makeMove check)
     if (depth <= 0) {
         return heuristic->evaluatePosition(board, color);
@@ -158,6 +183,8 @@ int MinMaxAI::alphabeta(Board& board, int depth, int alpha, int beta, bool maxim
         int maxValue = std::numeric_limits<int>::min();
 
         for (const Position& move : moves) {
+            VISU_HOOK(SearchDataCollector::instance().onNodeEnter(move, depth, alpha, beta, true));
+
             MoveUndo undo = board.makeMove(move.x, move.y, color);
 
             // LOCAL win check: only check around last move + capture counter (O(1) + O(40))
@@ -170,6 +197,7 @@ int MinMaxAI::alphabeta(Board& board, int depth, int alpha, int beta, bool maxim
 
             board.unmakeMove(undo);
 
+            bool pruned = false;
             if (value > maxValue) {
                 maxValue = value;
             }
@@ -177,8 +205,12 @@ int MinMaxAI::alphabeta(Board& board, int depth, int alpha, int beta, bool maxim
 
             if (beta <= alpha) {
                 cutoffsCount++;
+                pruned = true;
+                VISU_HOOK(SearchDataCollector::instance().onNodeExit(value, true));
                 break;
             }
+            VISU_HOOK(SearchDataCollector::instance().onNodeExit(value, false));
+            (void)pruned;
         }
 
         return maxValue;
@@ -187,6 +219,8 @@ int MinMaxAI::alphabeta(Board& board, int depth, int alpha, int beta, bool maxim
         CellState opponentColor = (color == BLACK) ? WHITE : BLACK;
 
         for (const Position& move : moves) {
+            VISU_HOOK(SearchDataCollector::instance().onNodeEnter(move, depth, alpha, beta, false));
+
             MoveUndo undo = board.makeMove(move.x, move.y, opponentColor);
 
             // LOCAL win check for opponent
@@ -199,6 +233,7 @@ int MinMaxAI::alphabeta(Board& board, int depth, int alpha, int beta, bool maxim
 
             board.unmakeMove(undo);
 
+            bool pruned = false;
             if (value < minValue) {
                 minValue = value;
             }
@@ -206,8 +241,12 @@ int MinMaxAI::alphabeta(Board& board, int depth, int alpha, int beta, bool maxim
 
             if (beta <= alpha) {
                 cutoffsCount++;
+                pruned = true;
+                VISU_HOOK(SearchDataCollector::instance().onNodeExit(value, true));
                 break;
             }
+            VISU_HOOK(SearchDataCollector::instance().onNodeExit(value, false));
+            (void)pruned;
         }
 
         return minValue;

@@ -16,7 +16,9 @@
 #include "../Game/IPlayer.hpp"
 #include "../Game/Board.hpp"
 #include "Heuristic.hpp"
+#include "../Debug.hpp"
 #include <memory>
+#include <atomic>
 
 class MinMaxAI : public IPlayer {
 private:
@@ -27,6 +29,14 @@ private:
     mutable int nodesEvaluated;
     mutable int cutoffsCount;
     mutable bool debugMode;
+
+#ifdef DEBUG_VISU
+    std::atomic<bool> shouldStop{false};
+public:
+    void requestStop() { shouldStop = true; }
+    void clearStop() { shouldStop = false; }
+private:
+#endif
 
 public:
     MinMaxAI(CellState playerColor, int depth = 4, 

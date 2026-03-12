@@ -112,6 +112,12 @@ re: fclean all
 debug: CXXFLAGS := -std=c++17 -Wall -Wextra -Werror -g -DDEBUG
 debug: $(NAME)
 
+# AI Debug Visualizer target (separate window showing minimax tree)
+debug_visu: clean
+debug_visu: CXXFLAGS += -DDEBUG_VISU -g
+debug_visu: $(NAME)
+	@echo "$(PURPLE)✓ Built with AI Debug Visualizer enabled!$(RESET)"
+
 # Install system dependencies (for Ubuntu/Debian)
 deps:
 	@echo "$(YELLOW)Installing system dependencies...$(RESET)"
@@ -138,9 +144,10 @@ help:
 	@echo "  $(GREEN)clean$(RESET)   - Remove object files"
 	@echo "  $(GREEN)fclean$(RESET)  - Remove all generated files including SFML"
 	@echo "  $(GREEN)re$(RESET)      - Rebuild everything from scratch"
-	@echo "  $(GREEN)debug$(RESET)   - Build with debug flags"
+	@echo "  $(GREEN)debug$(RESET)      - Build with debug flags"
+	@echo "  $(GREEN)debug_visu$(RESET) - Build with AI debug visualizer window"
 	@echo "  $(GREEN)deps$(RESET)    - Install system dependencies"
 	@echo "  $(GREEN)info$(RESET)    - Show build information"
 	@echo "  $(GREEN)help$(RESET)    - Show this help message"
 
-.PHONY: all clean fclean re sfml debug deps info help
+.PHONY: all clean fclean re sfml debug debug_visu deps info help
