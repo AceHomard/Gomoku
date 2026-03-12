@@ -26,6 +26,7 @@ public:
     int getDifficulty() const { return difficulty; }
     void setSearchDepth(int depth);
     int getSearchDepth() const;
+    MinMaxAI* getMinMaxEngine() const { return minMaxEngine.get(); }
 };
 
 #endif // AIPLAYER_HPP

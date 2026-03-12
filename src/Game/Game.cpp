@@ -74,12 +74,13 @@ Game::~Game() {
 #ifdef DEBUG_VISU
     // Signal AI thread to stop and wait
     if (aiSearchRunning) {
-        // Try to stop the AI
-        if (currentPlayer) {
-            AIPlayer* aiPlayer = dynamic_cast<AIPlayer*>(currentPlayer);
-            if (aiPlayer) {
-                MinMaxAI* minmax = dynamic_cast<MinMaxAI*>(currentPlayer);
-                if (minmax) minmax->requestStop();
+        for (auto* p : {player1.get(), player2.get()}) {
+            if (p && p->getType() == AI) {
+                AIPlayer* ai = dynamic_cast<AIPlayer*>(p);
+                if (ai) {
+                    if (auto* minmax = ai->getMinMaxEngine())
+                        minmax->requestStop();
+                }
             }
         }
     }
@@ -569,6 +570,26 @@ IPlayer* Game::getOpponent() const {
 }
 
 void Game::startNewGame(GameMode gameMode, CellState humanPreferredColor) {
+#ifdef DEBUG_VISU
+    // Stop any running AI thread before destroying players to avoid use-after-free
+    if (aiSearchRunning) {
+        // Signal all AI players to stop
+        for (auto* p : {player1.get(), player2.get()}) {
+            if (p && p->getType() == AI) {
+                AIPlayer* ai = dynamic_cast<AIPlayer*>(p);
+                if (ai) {
+                    if (auto* minmax = ai->getMinMaxEngine())
+                        minmax->requestStop();
+                }
+            }
+        }
+    }
+    if (aiThread.joinable()) {
+        aiThread.join();
+    }
+    aiSearchRunning = false;
+    aiSearchDone = false;
+#endif
     reset();
     clearHistory();  // Clear move history for new game
     setupPlayers(gameMode, humanPreferredColor);
