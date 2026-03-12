@@ -462,10 +462,17 @@ void GameRenderer::renderControls() {
                           "2 - Human vs AI\n"
                           "3 - AI vs AI\n"
                           "P/Space - Pause/Resume\n"
+                          "S - Move Suggestion (HvH)\n"
+                          "Left/Z - Undo Move\n"
+                          "Right/Y - Redo Move\n"
+                          "Home/End - First/Last Move\n"
+                          "Enter - Exit Replay\n"
                           "ESC - Quit";
     
     controlsHelpText.setString(controls);
-    controlsHelpText.setPosition(sf::Vector2f(window->getSize().x - 240, window->getSize().y - 200));
+    // Position below color selection panel (Y=440) if in HvA mode, otherwise higher up
+    float controlsY = (gameRef && gameRef->getGameMode() == HUMAN_VS_AI) ? 460.0f : 320.0f;
+    controlsHelpText.setPosition(sf::Vector2f(window->getSize().x - 240, controlsY));
     window->draw(controlsHelpText);
 }
 

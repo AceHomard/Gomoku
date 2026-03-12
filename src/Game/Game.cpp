@@ -173,7 +173,11 @@ void Game::handleEvents() {
         
         if (const auto* mousePressed = event->getIf<sf::Event::MouseButtonPressed>()) {
             if (mousePressed->button == sf::Mouse::Button::Left && state == PLAYING) {
-                handleMouseClick(static_cast<int>(mousePressed->position.x), static_cast<int>(mousePressed->position.y));
+                if (replayMode) {
+                    statusMessage = "Replay mode - Press Enter to resume playing";
+                } else {
+                    handleMouseClick(static_cast<int>(mousePressed->position.x), static_cast<int>(mousePressed->position.y));
+                }
             }
         } else if (const auto* keyPressed = event->getIf<sf::Event::KeyPressed>()) {
             handleKeyPress(keyPressed->code);
@@ -831,7 +835,8 @@ void Game::undoMove() {
     }
 
     statusMessage = "Replay: Move " + std::to_string(currentMoveIndex + 1) +
-                    "/" + std::to_string(moveHistory.size());
+                    "/" + std::to_string(moveHistory.size()) +
+                    "  |  Left/Z: Undo  Right/Y: Redo  Home/End: First/Last  Enter: Resume";
     std::cout << "[Replay] " << statusMessage << std::endl;
 }
 
@@ -848,7 +853,8 @@ void Game::redoMove() {
     reconstructBoardAtMove(currentMoveIndex);
 
     statusMessage = "Replay: Move " + std::to_string(currentMoveIndex + 1) +
-                    "/" + std::to_string(moveHistory.size());
+                    "/" + std::to_string(moveHistory.size()) +
+                    "  |  Left/Z: Undo  Right/Y: Redo  Home/End: First/Last  Enter: Resume";
     std::cout << "[Replay] " << statusMessage << std::endl;
 }
 
@@ -865,7 +871,8 @@ void Game::goToMove(int index) {
     reconstructBoardAtMove(currentMoveIndex);
 
     statusMessage = "Replay: Move " + std::to_string(currentMoveIndex + 1) +
-                    "/" + std::to_string(moveHistory.size());
+                    "/" + std::to_string(moveHistory.size()) +
+                    "  |  Left/Z: Undo  Right/Y: Redo  Home/End: First/Last  Enter: Resume";
     std::cout << "[Replay] Jumped to " << statusMessage << std::endl;
 }
 
