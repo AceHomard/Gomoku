@@ -46,6 +46,61 @@ Position MinMaxAI::makeMove(const Board& board) {
 #endif
     auto startTime = std::chrono::high_resolution_clock::now();
 
+    // OPENING BOOK: first 3-5 moves use pre-computed positions (instant)
+    {
+        int stoneCount = 0;
+        int center = board.getSize() / 2;
+        for (int x = 0; x < board.getSize(); x++)
+            for (int y = 0; y < board.getSize(); y++)
+                if (board.getCell(x, y) != EMPTY) stoneCount++;
+
+        if (stoneCount <= 4) {
+            Position bookMove(-1, -1);
+
+            if (stoneCount == 0) {
+                // First move (Black): always center
+                bookMove = Position(center, center);
+            } else if (stoneCount == 1) {
+                // Second move (White): offset from center, 2-3 cells away
+                // Try several L-shape offsets, pick first valid
+                int offsets[][2] = {{2, 1}, {1, 2}, {-2, 1}, {-1, 2}, {2, -1}, {-2, -1}};
+                for (auto& off : offsets) {
+                    int ox = center + off[0], oy = center + off[1];
+                    if (board.isValidMove(ox, oy)) {
+                        bookMove = Position(ox, oy);
+                        break;
+                    }
+                }
+            } else if (stoneCount == 2) {
+                // Third move (Black): extend L-shape from own stone, gap preferred (X_X)
+                for (int x = 0; x < board.getSize(); x++) {
+                    for (int y = 0; y < board.getSize(); y++) {
+                        if (board.getCell(x, y) == color) {
+                            // Try gap positions (distance 2) for X_X shape
+                            int offsets[][2] = {{2, 1}, {1, 2}, {-2, 1}, {-1, 2},
+                                                {2, -1}, {-2, -1}, {2, 0}, {0, 2}, {-2, 0}, {0, -2}};
+                            for (auto& off : offsets) {
+                                int ox = x + off[0], oy = y + off[1];
+                                if (board.isValidMove(ox, oy) &&
+                                    Rules::isValidMove(board, ox, oy, color)) {
+                                    bookMove = Position(ox, oy);
+                                    goto bookDone;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            bookDone:
+            if (bookMove.x >= 0 && bookMove.y >= 0 &&
+                Rules::isValidMove(board, bookMove.x, bookMove.y, color)) {
+                LOG_INFO("Opening book move: (" << bookMove.x << ", " << bookMove.y << ")");
+                return bookMove;
+            }
+        }
+    }
+
     VISU_HOOK(SearchDataCollector::instance().onSearchStart(searchDepth));
 
     std::vector<Position> moves = generateMoves(board);

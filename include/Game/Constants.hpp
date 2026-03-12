@@ -35,22 +35,27 @@ namespace EvalScores {
     // Terminal states (MinMax algorithm)
     constexpr int WIN = 100000;
     constexpr int LOSS = -100000;
-    constexpr int WIN_VALUE = 10000;   // Used by MinMaxAI
-    constexpr int LOSE_VALUE = -10000; // Used by MinMaxAI
+    constexpr int WIN_VALUE = 500000;   // Used by MinMaxAI - MUST exceed any pattern score
+    constexpr int LOSE_VALUE = -500000; // Used by MinMaxAI - MUST be lower than any pattern score
 
     // Pattern scores (used in position evaluation) - open vs blocked
     // Open = both ends free, Half-open = one end free, Blocked = both ends blocked
     constexpr int LIVE_FOUR = 100000;     // _XXXX_ : forced win next move
+    constexpr int SPLIT_FOUR = 90000;    // _XX_XX_ or _X_XXX_ : gap-four, quasi-unstoppable
     constexpr int RUSH_FOUR = 5000;       // OXXXX_ : one way to complete
-    constexpr int LIVE_THREE = 4000;      // _XXX__ or _X_XX_ : creates open-four next
+    constexpr int LIVE_THREE = 4000;      // _XXX__ : creates open-four next
+    constexpr int STRETCH_THREE = 3500;   // _X_XX_ or _XX_X_ : gap-three, very dangerous
     constexpr int RUSH_THREE = 400;       // OXXX__ : only one dangerous extension
     constexpr int LIVE_TWO = 200;         // __XX__ : future potential
     constexpr int RUSH_TWO = 30;          // OXX___ : limited potential
 
-    // Legacy alignment scores (kept for compatibility)
-    constexpr int ALIGNMENT_4 = 1500;
-    constexpr int ALIGNMENT_3 = 500;
-    constexpr int ALIGNMENT_2 = 50;
+    // Fork scores (multi-directional threats)
+    constexpr int FORK_DOUBLE_FOUR = 200000;  // Two fours = instant win
+    constexpr int FORK_FOUR_THREE = 150000;   // Four + open three = forced win
+    constexpr int FORK_DOUBLE_THREE = 50000;  // Two open threes
+
+    // Vulnerability
+    constexpr int VULNERABLE_PAIR_PENALTY = 150; // Penalty per capturable pair created
 
     // Move ordering scores - Offensive (create threats)
     constexpr int MOVE_WIN_OR_NEAR = 10000;    // Win immediately or force win
