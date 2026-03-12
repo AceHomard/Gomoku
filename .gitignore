@@ -33,10 +33,3 @@ dist/
 # Compiler generated files
 *.gch
 *.pch
-
-/.claude
-
-# Documentation vault (Obsidian)
-\[DOC\]-Gomoku/
-
-Gomoku
