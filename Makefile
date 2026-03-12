@@ -101,9 +101,9 @@ debug: CXXFLAGS := -std=c++17 -Wall -Wextra -Werror -g -DDEBUG
 debug: $(NAME)
 
 # AI Debug Visualizer target (separate window showing minimax tree)
-debug_visu: clean
-debug_visu: CXXFLAGS += -DDEBUG_VISU -g
-debug_visu: $(NAME)
+debug_visu:
+	@$(MAKE) clean
+	@$(MAKE) $(NAME) CXXFLAGS="$(CXXFLAGS) -DDEBUG_VISU -g"
 	@echo "$(PURPLE)✓ Built with AI Debug Visualizer enabled!$(RESET)"
 
 # Install system dependencies (for Ubuntu/Debian)
