@@ -1,15 +1,3 @@
-/* ************************************************************************** */
-/*                                                                            */
-/*                                                        :::      ::::::::   */
-/*   DebugVisualizer.hpp                               :+:      :+:    :+:   */
-/*                                                    +:+ +:+         +:+     */
-/*   By: glamazer <glamazer@student.42.fr>          +#+  +:+       +#+        */
-/*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2025/09/30 00:00:00 by glamazer          #+#    #+#             */
-/*   Updated: 2025/09/30 00:00:00 by glamazer         ###   ########.fr       */
-/*                                                                            */
-/* ************************************************************************** */
-
 #ifndef DEBUGVISUALIZER_HPP
 #define DEBUGVISUALIZER_HPP
 
@@ -49,8 +37,8 @@ private:
     const DebugTreeNode* hoveredNode;
     const DebugTreeNode* selectedNode;
 
-    static constexpr int DEFAULT_W = 1200;
-    static constexpr int DEFAULT_H = 800;
+    static constexpr int DEFAULT_W = 1800;
+    static constexpr int DEFAULT_H = 1200;
     static constexpr int STATS_PANEL_W = 300;
 
     bool fullscreen;

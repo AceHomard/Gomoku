@@ -1,15 +1,3 @@
-/* ************************************************************************** */
-/*                                                                            */
-/*                                                        :::      ::::::::   */
-/*   Gomoku.hpp                                         :+:      :+:    :+:   */
-/*                                                    +:+ +:+         +:+     */
-/*   By: glamazer <glamazer@student.42.fr>          +#+  +:+       +#+        */
-/*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2025/09/09 10:00:00 by glamazer          #+#    #+#             */
-/*   Updated: 2025/09/09 10:00:00 by glamazer         ###   ########.fr       */
-/*                                                                            */
-/* ************************************************************************** */
-
 #ifndef GOMOKU_HPP
 #define GOMOKU_HPP
 
@@ -25,7 +13,7 @@ class Player;
 
 // Game constants
 const int BOARD_SIZE = 19;
-const int CELL_SIZE = 30;
+const int CELL_SIZE = 45;
 const int WINDOW_WIDTH = BOARD_SIZE * CELL_SIZE + 100;
 const int WINDOW_HEIGHT = BOARD_SIZE * CELL_SIZE + 100;
 

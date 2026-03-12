@@ -1,15 +1,3 @@
-/* ************************************************************************** */
-/*                                                                            */
-/*                                                        :::      ::::::::   */
-/*   Game.cpp                                           :+:      :+:    :+:   */
-/*                                                    +:+ +:+         +:+     */
-/*   By: glamazer <glamazer@student.42.fr>          +#+  +:+       +#+        */
-/*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2025/09/09 10:00:00 by glamazer          #+#    #+#             */
-/*   Updated: 2025/09/09 10:00:00 by glamazer         ###   ########.fr       */
-/*                                                                            */
-/* ************************************************************************** */
-
 #include "Game/Game.hpp"
 #include "Game/HumanPlayer.hpp"
 #include "Game/AIPlayer.hpp"
@@ -26,7 +14,7 @@
 
 // Constants
 const float Game::MIN_CELL_SIZE = 20.0f;
-const float Game::MAX_CELL_SIZE = 40.0f;
+const float Game::MAX_CELL_SIZE = 60.0f;
 const int Game::UI_PANEL_WIDTH = 250;
 const int Game::BOARD_MARGIN = 50;
 
