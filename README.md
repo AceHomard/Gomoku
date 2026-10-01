@@ -102,9 +102,8 @@ include/, src/
 
 This project was built by a team of two:
 
-<!-- Add GitHub profile links for each contributor -->
 - **jgiampor** ([@AceHomard](https://github.com/AceHomard)): game rules (captures, double-three, endgame capture), move validation, AI search optimizations, move suggestion, UI features
-- **glamazere**: initial architecture, heuristic and move scoring, move history and replay system, AI debug visualizer, pattern-based evaluation, make/unmake move generation
+- **glamazere** ([@quercyAP](https://github.com/quercyAP)): initial architecture, heuristic and move scoring, move history and replay system, AI debug visualizer, pattern-based evaluation, make/unmake move generation
 
 ## License
 
