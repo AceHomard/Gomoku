@@ -4,7 +4,7 @@
 ![SFML 3](https://img.shields.io/badge/SFML-3.0.1-8CC445?logo=sfml)
 ![License: MIT](https://img.shields.io/badge/license-MIT-blue)
 
-A Gomoku game with **Ninuki-renju rules** (captures, double-three ban, endgame capture) and a **Minimax / Alpha-Beta AI** searching 10 plies deep, written in C++17 with an SFML graphical interface.
+A Gomoku game with **Ninuki-renju rules** (captures, double-three ban, endgame capture) and a **Minimax / Alpha-Beta AI** searching up to 10 plies deep in about half a second per move, written in C++17 with an SFML graphical interface.
 
 <!-- Add a screenshot or GIF of a game here, e.g. ![Gameplay](docs/gameplay.gif) -->
 
@@ -32,19 +32,32 @@ The game is played on a 19×19 board. Black moves first.
 
 ## How the AI works
 
-The AI (`src/AI/`) is a **Minimax search with Alpha-Beta pruning** running at depth 10.
+The AI (`src/AI/`) is a **Minimax search with Alpha-Beta pruning**, driven by iterative deepening within a time budget of about 0.5 s per move.
 
+- **Iterative deepening**: the AI searches at depth 1, then 2, 3, … up to 10. When the time budget runs out, it plays the best move from the last fully completed depth. The best move from each depth is tried first at the next one.
+- **Transposition table**: positions are identified by a Zobrist hash, updated with every move and including the capture counts. Positions already evaluated are reused instead of searched again.
+- **Killer moves**: moves that caused an alpha-beta cutoff at a given depth are tried first in sibling positions, which makes cutoffs happen earlier.
 - **Make / unmake moves**: the search updates a single board in place and reverts each move, including any captures, instead of copying the board at every node.
 - **Candidate generation**: only empty cells next to existing stones are considered. Each candidate gets a quick tactical score (threats created, threats blocked, captures) and only the best ones are explored. This beam search keeps the tree small enough for a depth-10 search.
 - **Pattern-based evaluation**: leaf positions are scored by recognizing classic Gomoku shapes in every direction (live four, split four, rush four, live three, stretched three, …) and multi-direction forks (double four, four-three, double three), together with capture count and vulnerable pairs.
-- **Root-level shortcuts**: winning moves are detected immediately without searching deeper, and the forced defensive moves required by the endgame capture rule are applied before the search starts.
+- **Root-level shortcuts**: an immediately winning move is played without any search, and the forced defensive moves required by the endgame capture rule are applied before the search starts.
 - **Opening book**: the first few moves are played instantly from predefined shapes.
 
 All scoring constants live in [`include/Game/Constants.hpp`](include/Game/Constants.hpp).
 
 ### AI debug visualizer
 
-Build with `make debug_visu` to open a second window next to the game. It shows the minimax tree for every AI move: nodes you can expand or collapse, scores, pruned branches, zoom and pan, plus a stats panel (nodes evaluated, cutoffs, search time).
+Build with `make debug_visu` to open a second window next to the game. It shows the minimax tree of the deepest search pass for every AI move: nodes you can expand or collapse, scores, pruned branches, zoom and pan, plus a stats panel (nodes evaluated, cutoffs, search time).
+
+### Benchmark
+
+`make benchmark` builds a headless AI vs AI runner that reports win rates, time per move and depth reached:
+
+```bash
+make benchmark
+./benchmark -n 10 -q      # 10 games, results only
+./benchmark --noise 30    # more random variation between games (default: 15, 0 = deterministic)
+```
 
 ## Getting started
 
@@ -71,6 +84,7 @@ SFML is downloaded into `lib/` and linked statically, so nothing needs to be ins
 | `make` | Build the game |
 | `make debug` | Build with debug symbols and logging |
 | `make debug_visu` | Build with the AI debug visualizer window |
+| `make benchmark` | Build the headless AI vs AI benchmark |
 | `make re` | Full rebuild |
 | `make fclean` | Remove build files, the binary and the downloaded SFML |
 
