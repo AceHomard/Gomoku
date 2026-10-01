@@ -3,11 +3,16 @@
 
 #include "../Game/Board.hpp"
 #include <vector>
+#include <random>
 
 class Heuristic {
 public:
     Heuristic();
     ~Heuristic();
+
+    // Enable/disable random noise for move scoring (for varied AI vs AI games)
+    void setRandomNoise(int maxNoise) { noiseRange = maxNoise; }
+    int getRandomNoise() const { return noiseRange; }
     
     // Main evaluation function - currently returns 0 for non-terminal positions
     // This will be improved during the learning iterations
@@ -18,6 +23,9 @@ public:
     std::vector<Position> getRelevantMoves(const Board& board, CellState player, bool fastMode = false);
 
 private:
+    int noiseRange = 0;  // 0 = deterministic, >0 = random noise ±noiseRange
+    mutable std::mt19937 rng{std::random_device{}()};
+
     // Helper to check if position has adjacent stones
     bool hasAdjacentStone(const Board& board, int x, int y);
 

@@ -4,7 +4,7 @@
 #include <iostream>
 
 // Define DEBUG_MODE to enable debug logging
-// Uncomment the line below for development/debugging
+// Pass -DDEBUG_MODE to the compiler or use `make debug` to enable
 // #define DEBUG_MODE
 
 // Define DEBUG_VISU to enable AI debug visualizer window
@@ -28,9 +28,15 @@
     #define LOG_PERF(msg) ((void)0)
 #endif
 
-// Critical logs - always active (errors, game rules)
-#define LOG_ERROR(msg) std::cerr << "[ERROR] " << msg << std::endl
-#define LOG_RULE(msg) std::cout << "[RULE] " << msg << std::endl
-#define LOG_MANDATORY(msg) std::cout << "[MANDATORY] " << msg << std::endl
+// Critical logs - active in debug mode only (errors, game rules)
+#ifdef DEBUG_MODE
+    #define LOG_ERROR(msg) std::cerr << "[ERROR] " << msg << std::endl
+    #define LOG_RULE(msg) std::cout << "[RULE] " << msg << std::endl
+    #define LOG_MANDATORY(msg) std::cout << "[MANDATORY] " << msg << std::endl
+#else
+    #define LOG_ERROR(msg) ((void)0)
+    #define LOG_RULE(msg) ((void)0)
+    #define LOG_MANDATORY(msg) ((void)0)
+#endif
 
 #endif // DEBUG_HPP

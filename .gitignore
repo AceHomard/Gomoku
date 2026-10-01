@@ -33,3 +33,9 @@ dist/
 # Compiler generated files
 *.gch
 *.pch
+
+/.claude
+
+# Benchmark binary and local notes
+benchmark
+docs/

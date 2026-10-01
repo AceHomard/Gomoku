@@ -2,6 +2,25 @@
 #include "Debug.hpp"
 #include <string>
 #include <iostream>
+#include <random>
+
+// Zobrist static members
+uint64_t Board::zobristTable[19][19][3] = {};
+uint64_t Board::zobristCaptures[2][11] = {};
+bool Board::zobristInitialized = false;
+
+void Board::initZobrist() {
+    if (zobristInitialized) return;
+    std::mt19937_64 rng(0x474F4D4F4B553432ULL);
+    for (int x = 0; x < 19; x++)
+        for (int y = 0; y < 19; y++)
+            for (int s = 0; s < 3; s++)
+                zobristTable[x][y][s] = rng();
+    for (int p = 0; p < 2; p++)
+        for (int c = 0; c < 11; c++)
+            zobristCaptures[p][c] = rng();
+    zobristInitialized = true;
+}
 
 // Build a directional line centered on (x,y) over k in [-5..5]
 static std::string buildDirectionalLine(const Board* board, int x, int y, int dx, int dy, CellState player) {
@@ -59,7 +78,8 @@ static bool matchesOpenThree(const std::string& line, int centerIdx) {
     return false;
 }
 
-Board::Board(int boardSize) : size(boardSize), blackCaptures(0), whiteCaptures(0) {
+Board::Board(int boardSize) : size(boardSize), blackCaptures(0), whiteCaptures(0), lastMove(-1, -1), lastPlayer(EMPTY), zobristHash(0) {
+    initZobrist();
     grid.resize(size, std::vector<CellState>(size, EMPTY));
 }
 
@@ -74,6 +94,9 @@ void Board::clear() {
     }
     blackCaptures = 0;
     whiteCaptures = 0;
+    lastMove = Position(-1, -1);
+    lastPlayer = EMPTY;
+    zobristHash = 0;
 }
 
 bool Board::placePiece(int x, int y, CellState player) {
@@ -83,18 +106,32 @@ bool Board::placePiece(int x, int y, CellState player) {
     // NOTE: Double-three rule is now checked in Rules::isValidMove() with capture exception
     // No need to check again here
 
-    // Place the stone
+    // Place the stone (update hash: remove EMPTY, add player)
+    zobristHash ^= zobristTable[x][y][EMPTY];
+    zobristHash ^= zobristTable[x][y][player];
     grid[x][y] = player;
+    lastMove = Position(x, y);
+    lastPlayer = player;
 
     // Check and execute captures after placing
     std::vector<Position> captures = checkCaptures(x, y, player);
     if (!captures.empty()) {
+        int playerIdx = (player == BLACK) ? 0 : 1;
+        int oldCaptures = (player == BLACK) ? blackCaptures : whiteCaptures;
+
+        // Remove old capture count from hash (clamped to array bounds)
+        zobristHash ^= zobristCaptures[playerIdx][std::min(oldCaptures, 10)];
+
         int capturedCount = executeCaptures(captures);
         if (player == BLACK) {
             blackCaptures += capturedCount;
         } else {
             whiteCaptures += capturedCount;
         }
+
+        int newCaptures = (player == BLACK) ? blackCaptures : whiteCaptures;
+        // Add new capture count to hash (clamped to array bounds)
+        zobristHash ^= zobristCaptures[playerIdx][std::min(newCaptures, 10)];
     }
     
     return true;
@@ -108,7 +145,9 @@ MoveUndo Board::makeMove(int x, int y, CellState player) {
     undo.capturedColor = getOpponent(player);
     undo.capturedCount = 0;
 
-    // Place the stone
+    // Place the stone (update Zobrist hash)
+    zobristHash ^= zobristTable[x][y][EMPTY];
+    zobristHash ^= zobristTable[x][y][player];
     grid[x][y] = player;
 
     // Check and execute captures
@@ -116,36 +155,54 @@ MoveUndo Board::makeMove(int x, int y, CellState player) {
     if (!captures.empty()) {
         undo.capturedStones = captures;
         undo.capturedCount = captures.size();
+
+        int playerIdx = (player == BLACK) ? 0 : 1;
+        int& capCount = (player == BLACK) ? blackCaptures : whiteCaptures;
+
+        // Remove old capture count from hash
+        zobristHash ^= zobristCaptures[playerIdx][capCount];
+
         for (const Position& pos : captures) {
+            zobristHash ^= zobristTable[pos.x][pos.y][undo.capturedColor];
+            zobristHash ^= zobristTable[pos.x][pos.y][EMPTY];
             grid[pos.x][pos.y] = EMPTY;
         }
-        if (player == BLACK) {
-            blackCaptures += undo.capturedCount;
-        } else {
-            whiteCaptures += undo.capturedCount;
-        }
+
+        capCount += undo.capturedCount;
+
+        // Add new capture count to hash
+        zobristHash ^= zobristCaptures[playerIdx][capCount];
     }
 
     return undo;
 }
 
 void Board::unmakeMove(const MoveUndo& undo) {
-    // Remove the placed stone
-    grid[undo.x][undo.y] = EMPTY;
-
-    // Restore captured stones
-    for (const Position& pos : undo.capturedStones) {
-        grid[pos.x][pos.y] = undo.capturedColor;
-    }
-
-    // Restore capture counter
+    // Reverse capture count hash update
     if (undo.capturedCount > 0) {
-        if (undo.player == BLACK) {
-            blackCaptures -= undo.capturedCount;
-        } else {
-            whiteCaptures -= undo.capturedCount;
+        int playerIdx = (undo.player == BLACK) ? 0 : 1;
+        int& capCount = (undo.player == BLACK) ? blackCaptures : whiteCaptures;
+
+        // Remove current capture count from hash
+        zobristHash ^= zobristCaptures[playerIdx][capCount];
+
+        capCount -= undo.capturedCount;
+
+        // Add restored capture count to hash
+        zobristHash ^= zobristCaptures[playerIdx][capCount];
+
+        // Restore captured stones
+        for (const Position& pos : undo.capturedStones) {
+            zobristHash ^= zobristTable[pos.x][pos.y][EMPTY];
+            zobristHash ^= zobristTable[pos.x][pos.y][undo.capturedColor];
+            grid[pos.x][pos.y] = undo.capturedColor;
         }
     }
+
+    // Remove the placed stone (reverse Zobrist hash)
+    zobristHash ^= zobristTable[undo.x][undo.y][undo.player];
+    zobristHash ^= zobristTable[undo.x][undo.y][EMPTY];
+    grid[undo.x][undo.y] = EMPTY;
 }
 
 CellState Board::getCell(int x, int y) const {
@@ -178,6 +235,16 @@ CellState Board::getOpponent(CellState player) const {
 // Win condition checking
 bool Board::checkWin(CellState player) const {
     return checkCaptureWin(player) || checkAlignment(-1, -1, player);
+}
+
+bool Board::checkWinFast(CellState player) const {
+    // Fast win check: only checks alignment from lastMove position
+    // Captures can only happen via the last placed stone, so captureWin is already fast
+    if (checkCaptureWin(player)) return true;
+    if (lastMove.x >= 0 && lastPlayer == player) {
+        return checkAlignment(lastMove.x, lastMove.y, player);
+    }
+    return false;
 }
 
 bool Board::checkAlignment(int x, int y, CellState player) const {
@@ -282,7 +349,7 @@ std::vector<Position> Board::checkCaptureDirection(int x, int y, int dx, int dy,
             // So actually, the basic pattern check ALREADY ensures exactly 2!
             // Because +3 MUST be player, there can't be 3 consecutive opponents.
 
-            LOG_DEBUG("[CaptureCheck] Found valid capture at (" << x << "," << y
+            LOG_DEBUG("CaptureCheck: Found valid capture at (" << x << "," << y
                       << ") dir=(" << dx << "," << dy << ") capturing ("
                       << (x+dx) << "," << (y+dy) << ") and ("
                       << (x+2*dx) << "," << (y+2*dy) << ")");
@@ -295,13 +362,17 @@ std::vector<Position> Board::checkCaptureDirection(int x, int y, int dx, int dy,
 }
 
 int Board::executeCaptures(const std::vector<Position>& captures) {
-    // Verbose logging for captures (useful during debugging/analysis)
+#ifdef DEBUG_MODE
     if (!captures.empty()) {
-        LOG_DEBUG("[Capture] Removing " << captures.size() << " stones");
+        LOG_DEBUG("Capture: Removing " << captures.size() << " stones");
     }
+#endif
 
     for (const Position& pos : captures) {
         if (isValidPosition(pos.x, pos.y)) {
+            CellState captured = grid[pos.x][pos.y];
+            zobristHash ^= zobristTable[pos.x][pos.y][captured];
+            zobristHash ^= zobristTable[pos.x][pos.y][EMPTY];
             grid[pos.x][pos.y] = EMPTY;
         }
     }

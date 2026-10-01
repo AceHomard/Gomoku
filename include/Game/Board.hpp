@@ -4,6 +4,7 @@
 #include "../Gomoku.hpp"
 #include <vector>
 #include <utility>
+#include <cstdint>
 
 enum CellState {
     EMPTY = 0,
@@ -37,6 +38,15 @@ private:
     int size;
     int blackCaptures;
     int whiteCaptures;
+    Position lastMove;
+    CellState lastPlayer;
+
+    // Zobrist hashing
+    uint64_t zobristHash;
+    static uint64_t zobristTable[19][19][3];      // [x][y][EMPTY/BLACK/WHITE]
+    static uint64_t zobristCaptures[2][11];        // [player_index][capture_count]
+    static bool zobristInitialized;
+    static void initZobrist();
 
 public:
     Board(int boardSize = BOARD_SIZE);
@@ -56,8 +66,11 @@ public:
 
     // Win condition checking
     bool checkWin(CellState player) const;
+    bool checkWinFast(CellState player) const; // Only checks from lastMove (for AI search)
     bool checkAlignment(int x, int y, CellState player) const;
     bool checkCaptureWin(CellState player) const;
+    Position getLastMove() const { return lastMove; }
+    CellState getLastPlayer() const { return lastPlayer; }
     
     // Capture system
     std::vector<Position> checkCaptures(int x, int y, CellState player) const;
@@ -72,6 +85,9 @@ public:
     bool canFormUnstoppableFour(int x, int y, int dx, int dy, CellState player) const;
     bool canCreateUnstoppableFour(int x, int y, int dx, int dy, CellState player) const;
     
+    // Zobrist hash
+    uint64_t getZobristHash() const { return zobristHash; }
+
     // Utility functions
     bool isValidPosition(int x, int y) const;
     CellState getOpponent(CellState player) const;

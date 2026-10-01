@@ -437,7 +437,7 @@ void GameRenderer::renderControls() {
                           "Home/End - First/Last Move\n"
                           "Enter - Exit Replay\n"
                           "ESC - Quit";
-    
+
     controlsHelpText.setString(controls);
 
     float controlsY = (gameRef && gameRef->getGameMode() == HUMAN_VS_AI) ? 460.0f : 320.0f;

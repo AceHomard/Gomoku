@@ -27,6 +27,7 @@ public:
     void setSearchDepth(int depth);
     int getSearchDepth() const;
     MinMaxAI* getMinMaxEngine() const { return minMaxEngine.get(); }
+    int getMaxDepthEverReached() const;
 };
 
 #endif // AIPLAYER_HPP
